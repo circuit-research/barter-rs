@@ -1,11 +1,11 @@
-use crate::cerebrum::{
-    Cerebrum, CerebrumState, Commander
+use super::{
+    Cerebrum, CerebrumState,
+    event::{AccountEvent, Command, Event},
+    market::MarketUpdater,
+    account::AccountUpdater,
+    command::Commander,
 };
 use barter_data::model::MarketEvent;
-use tokio::sync::mpsc;
-use crate::cerebrum::account::AccountUpdater;
-use crate::cerebrum::event::{AccountEvent, Command, Event, EventFeed};
-use crate::cerebrum::market::MarketUpdater;
 
 /// Consumer can transition to one of:
 ///  a) MarketUpdater
@@ -35,6 +35,7 @@ impl From<(Cerebrum<Consumer>, MarketEvent)> for Cerebrum<MarketUpdater> {
     fn from((cerebrum, market): (Cerebrum<Consumer>, MarketEvent)) -> Self {
         Self {
             feed: cerebrum.feed,
+            event_tx: cerebrum.event_tx,
             event_q: cerebrum.event_q,
             balances: cerebrum.balances,
             orders: cerebrum.orders,
@@ -50,6 +51,7 @@ impl From<(Cerebrum<Consumer>, AccountEvent)> for Cerebrum<AccountUpdater> {
     fn from((cerebrum, account): (Cerebrum<Consumer>, AccountEvent)) -> Self {
         Self {
             feed: cerebrum.feed,
+            event_tx: cerebrum.event_tx,
             event_q: cerebrum.event_q,
             balances: cerebrum.balances,
             orders: cerebrum.orders,
@@ -65,6 +67,7 @@ impl From<(Cerebrum<Consumer>, Command)> for Cerebrum<Commander> {
     fn from((cerebrum, command): (Cerebrum<Consumer>, Command)) -> Self {
         Self {
             feed: cerebrum.feed,
+            event_tx: cerebrum.event_tx,
             event_q: cerebrum.event_q,
             balances: cerebrum.balances,
             orders: cerebrum.orders,
