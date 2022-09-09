@@ -1,20 +1,19 @@
 use self::{
-    event::{EventFeed, Event, AccountEvent, Command},
-    consumer::Consumer,
-    market::MarketUpdater,
-    order::OrderGenerator,
     account::AccountUpdater,
+    consumer::Consumer,
+    event::EventFeed,
+    market::MarketUpdater,
+    order::{OrderGenerator, Algorithmic, Manual},
+    command::Commander,
 };
-use crate::data::Feed;
-use barter_data::model::MarketEvent;
 use std::collections::VecDeque;
-use tokio::sync::mpsc;
 
 mod consumer;
 mod event;
 mod account;
 mod market;
 mod order;
+mod command;
 
 // Todo: I could make one receiver for all events...? ie/ MarketFeed + AccountFeed + Command
 //  '--> State would change depending on the event type
@@ -33,14 +32,16 @@ pub enum CerebrumState {
     // Start(Cerebrum<Start>),
     Consumer(Cerebrum<Consumer>),
     MarketUpdater(Cerebrum<MarketUpdater>),
-    OrderGenerator(Cerebrum<OrderGenerator>),
+    OrderGeneratorManual(Cerebrum<OrderGenerator<Manual>>),
+    OrderGeneratorAlgorithmic(Cerebrum<OrderGenerator<Algorithmic>>),
     AccountUpdater(Cerebrum<AccountUpdater>),
     Commander(Cerebrum<Commander>),
-    // End(Cerebrum<End>),
+    End(Cerebrum<End>),
 }
 
 pub struct Cerebrum<State> {
     pub feed: EventFeed,
+    pub event_tx: (),
     pub event_q: VecDeque<()>,
     pub balances: (),
     pub orders: (),
@@ -50,40 +51,7 @@ pub struct Cerebrum<State> {
 }
 
 // pub struct Start;
-// pub struct End;
-
-pub struct Commander {
-    pub command: Command,
-}
-
-impl From<Cerebrum<MarketUpdater>> for Cerebrum<Consumer> {
-    fn from(cerebrum: Cerebrum<MarketUpdater>) -> Self {
-        todo!()
-    }
-}
-
-impl Cerebrum<AccountUpdater> {
-    fn update(mut self) -> Cerebrum<Consumer> {
-        todo!()
-    }
-}
-
-impl From<Cerebrum<AccountUpdater>> for Cerebrum<Consumer> {
-    fn from(cerebrum: Cerebrum<AccountUpdater>) -> Self {
-        todo!()
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
+pub struct End;
 
 
 #[test]
@@ -91,7 +59,7 @@ fn it_works() {
     // Construct dependencies
 
     // EventFeed
-    let (event_tx, event_rx) = mpsc::unbounded_channel();
+    let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel();
     let feed = EventFeed::new(event_rx);
 
 
