@@ -12,12 +12,12 @@ pub struct MarketUpdater {
 impl Cerebrum<MarketUpdater> {
     pub fn update_from_market_event(mut self) -> Engine {
         // Update Positions, Statistics, Indicators
-        match self.state.market.kind {
-            DataKind::Trade(_) => {
-                todo!()
+        match &self.state.market.kind {
+            DataKind::Trade(trade) => {
+                println!("Update from market: {trade:?}");
             }
-            DataKind::Candle(_) => {
-                todo!()
+            DataKind::Candle(candle) => {
+                println!("Update from market: {candle:?}");
             }
         };
 

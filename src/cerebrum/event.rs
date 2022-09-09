@@ -32,7 +32,6 @@ impl EventFeed {
 
     pub fn next(&mut self) -> Event {
         loop {
-            println!("TryRecv");
             match self.event_rx.try_recv() {
                 Ok(event) => break event,
                 Err(mpsc::error::TryRecvError::Empty) => continue,

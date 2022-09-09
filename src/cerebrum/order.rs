@@ -15,22 +15,20 @@ pub struct Manual { pub meta: () }
 
 impl Cerebrum<OrderGenerator<Algorithmic>> {
     pub fn generate_order(mut self) -> Engine {
+        // Todo:
         // 1. Analyse open Positions, Orders, Statistics, Indicators
         // 2. Decide whether to cancel or open orders
         // 3. Action the decisions
-        todo!();
-
         Engine::Consumer(Cerebrum::from(self))
     }
 }
 
 impl Cerebrum<OrderGenerator<Manual>> {
     pub fn generate_order_manual(mut self) -> Engine {
+        // Todo:
         // 1. Analyse open Positions, Orders, Statistics, Indicators
         // 2. Decide whether to cancel or open orders
         // 3. Action the decisions
-        todo!();
-
         Engine::Consumer(Cerebrum::from(self))
     }
 }
