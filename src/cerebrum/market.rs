@@ -1,4 +1,4 @@
-use crate::cerebrum::Cerebrum;
+use crate::cerebrum::{Cerebrum, Engine};
 use crate::cerebrum::order::Algorithmic;
 use crate::cerebrum::OrderGenerator;
 use barter_data::model::{DataKind, MarketEvent};
@@ -10,7 +10,7 @@ pub struct MarketUpdater {
 }
 
 impl Cerebrum<MarketUpdater> {
-    fn update(mut self) -> Cerebrum<OrderGenerator<Algorithmic>> {
+    pub fn update_from_market_event(mut self) -> Engine {
         // Update Positions, Statistics, Indicators
         match self.state.market.kind {
             DataKind::Trade(_) => {
@@ -21,7 +21,7 @@ impl Cerebrum<MarketUpdater> {
             }
         };
 
-        Cerebrum::from(self)
+        Engine::OrderGeneratorAlgorithmic(Cerebrum::from(self))
     }
 }
 
@@ -29,14 +29,13 @@ impl Cerebrum<MarketUpdater> {
 impl From<Cerebrum<MarketUpdater>> for Cerebrum<OrderGenerator<Algorithmic>> {
     fn from(cerebrum: Cerebrum<MarketUpdater>) -> Self {
         Self {
+            state: OrderGenerator { state: Algorithmic },
             feed: cerebrum.feed,
             event_tx: cerebrum.event_tx,
-            event_q: cerebrum.event_q,
             balances: cerebrum.balances,
             orders: cerebrum.orders,
             positions: cerebrum.positions,
             strategy: cerebrum.strategy,
-            state: OrderGenerator { state: Algorithmic }
         }
     }
 }
