@@ -35,6 +35,19 @@ mod initialise;
 //  - Make input & output feed / tx / rx names more distinct eg/ InputEventFeed, or InputFeed...
 //     ... output_tx / audit_tx / state_tx etc
 
+// Could use something like? Whatever is decided be consistent with casing / verb usage etc.
+pub enum EngineNew {
+    Initialise(Cerebrum<Initialiser>),
+    Consume(Cerebrum<Consumer>),
+    UpdateMarket(Cerebrum<MarketUpdater>),
+    UpdateAccount(Cerebrum<AccountUpdater>),
+    GenerateOrderAlgorithmic(Cerebrum<OrderGenerator<Algorithmic>>),
+    GenerateOrderManual(Cerebrum<OrderGenerator<Manual>>),
+    ActionCommand(Cerebrum<Commander>),
+    TerminateCerebrum<Terminated>),
+}
+
+
 pub enum Engine {
     Initialiser(Cerebrum<Initialiser>),
     Consumer(Cerebrum<Consumer>),
