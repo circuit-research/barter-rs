@@ -1,18 +1,17 @@
-use std::time::Duration;
-use barter_data::ExchangeId;
-use initialise::Initialiser;
-use terminate::Terminated;
-use crate::cerebrum::event::{Command, Event};
-use crate::data::live::MarketFeed;
-use crate::engine::error::EngineError;
 use self::{
+    event::EventFeed,
+    initialise::Initialiser,
+    market::MarketUpdater,
     account::AccountUpdater,
     command::Commander,
     consume::Consumer,
-    event::EventFeed,
-    market::MarketUpdater,
+    terminate::Terminated,
     order::{Algorithmic, Manual, OrderGenerator},
 };
+use crate::{
+    engine::error::EngineError,
+};
+
 
 
 mod consume;
@@ -27,6 +26,7 @@ mod initialise;
 // Todo:
 //  - Derive as eagerly as possible
 //  - Do I need an event_q?
+//  - Add metric_tx stub?
 //  - Determine what fields go in what state later
 //  - Will need some startup States to go from New -> Initialised
 //   '--> logic to hit the ExchangeClient to get balances, orders, positions.
@@ -68,7 +68,7 @@ impl Engine {
 
             if let Engine::Terminated(_) = self {
                 // Todo: Print trading session results & persist
-                break
+                break 'trading
             }
         }
     }
@@ -176,9 +176,13 @@ impl EngineBuilder {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+    use barter_data::ExchangeId;
     use barter_data::model::SubKind;
     use barter_integration::model::InstrumentKind;
     use tokio::sync::mpsc;
+    use crate::cerebrum::event::{Command, Event};
+    use crate::data::live::MarketFeed;
     use crate::data::MarketGenerator;
     use super::*;
 
