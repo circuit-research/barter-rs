@@ -1,5 +1,5 @@
 use crate::cerebrum::{Cerebrum, Engine};
-use crate::cerebrum::consumer::Consumer;
+use crate::cerebrum::consume::Consumer;
 use crate::cerebrum::event::AccountEvent;
 
 /// AccountUpdater can transition to:
