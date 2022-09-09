@@ -1,4 +1,4 @@
-use crate::cerebrum::Cerebrum;
+use crate::cerebrum::{Cerebrum, Engine};
 use crate::cerebrum::consumer::Consumer;
 use crate::cerebrum::event::AccountEvent;
 
@@ -9,7 +9,7 @@ pub struct AccountUpdater {
 }
 
 impl Cerebrum<AccountUpdater> {
-    fn update(mut self) -> Cerebrum<Consumer> {
+    pub fn update_from_account_event(mut self) -> Engine {
         // Update Positions, Statistics, Indicators
         match self.state.account {
             AccountEvent::OrderNew => {
@@ -26,7 +26,7 @@ impl Cerebrum<AccountUpdater> {
             }
         };
 
-        Cerebrum::from(self)
+        Engine::Consumer(Cerebrum::from(self))
     }
 }
 
@@ -34,14 +34,13 @@ impl Cerebrum<AccountUpdater> {
 impl From<Cerebrum<AccountUpdater>> for Cerebrum<Consumer> {
     fn from(cerebrum: Cerebrum<AccountUpdater>) -> Self {
         Self {
+            state: Consumer,
             feed: cerebrum.feed,
             event_tx: cerebrum.event_tx,
-            event_q: cerebrum.event_q,
             balances: cerebrum.balances,
             orders: cerebrum.orders,
             positions: cerebrum.positions,
             strategy: cerebrum.strategy,
-            state: Consumer
         }
     }
 }

@@ -1,5 +1,5 @@
 use super::{
-    Cerebrum, CerebrumState,
+    Cerebrum, Engine,
     event::{AccountEvent, Command, Event},
     market::MarketUpdater,
     account::AccountUpdater,
@@ -14,17 +14,17 @@ use barter_data::model::MarketEvent;
 pub struct Consumer;
 
 impl Cerebrum<Consumer> {
-    fn consume(mut self) -> CerebrumState {
+    pub fn next_event(mut self) -> Engine {
         // Consume next Event
         match self.feed.next() {
             Event::Market(market) => {
-                CerebrumState::MarketUpdater(Cerebrum::from((self, market)))
+                Engine::MarketUpdater(Cerebrum::from((self, market)))
             }
             Event::Account(account) => {
-                CerebrumState::AccountUpdater(Cerebrum::from((self, account)))
+                Engine::AccountUpdater(Cerebrum::from((self, account)))
             }
             Event::Command(command) => {
-                CerebrumState::Commander(Cerebrum::from((self, command)))
+                Engine::Commander(Cerebrum::from((self, command)))
             }
         }
     }
@@ -34,14 +34,13 @@ impl Cerebrum<Consumer> {
 impl From<(Cerebrum<Consumer>, MarketEvent)> for Cerebrum<MarketUpdater> {
     fn from((cerebrum, market): (Cerebrum<Consumer>, MarketEvent)) -> Self {
         Self {
+            state: MarketUpdater { market },
             feed: cerebrum.feed,
             event_tx: cerebrum.event_tx,
-            event_q: cerebrum.event_q,
             balances: cerebrum.balances,
             orders: cerebrum.orders,
             positions: cerebrum.positions,
             strategy: cerebrum.strategy,
-            state: MarketUpdater { market }
         }
     }
 }
@@ -50,14 +49,13 @@ impl From<(Cerebrum<Consumer>, MarketEvent)> for Cerebrum<MarketUpdater> {
 impl From<(Cerebrum<Consumer>, AccountEvent)> for Cerebrum<AccountUpdater> {
     fn from((cerebrum, account): (Cerebrum<Consumer>, AccountEvent)) -> Self {
         Self {
+            state: AccountUpdater { account },
             feed: cerebrum.feed,
             event_tx: cerebrum.event_tx,
-            event_q: cerebrum.event_q,
             balances: cerebrum.balances,
             orders: cerebrum.orders,
             positions: cerebrum.positions,
             strategy: cerebrum.strategy,
-            state: AccountUpdater { account }
         }
     }
 }
@@ -66,14 +64,13 @@ impl From<(Cerebrum<Consumer>, AccountEvent)> for Cerebrum<AccountUpdater> {
 impl From<(Cerebrum<Consumer>, Command)> for Cerebrum<Commander> {
     fn from((cerebrum, command): (Cerebrum<Consumer>, Command)) -> Self {
         Self {
+            state: Commander { command },
             feed: cerebrum.feed,
             event_tx: cerebrum.event_tx,
-            event_q: cerebrum.event_q,
             balances: cerebrum.balances,
             orders: cerebrum.orders,
             positions: cerebrum.positions,
             strategy: cerebrum.strategy,
-            state: Commander { command }
         }
     }
 }
