@@ -1,6 +1,7 @@
-use crate::cerebrum::{Cerebrum, Engine, Terminated};
+use crate::cerebrum::{Cerebrum, Engine};
 use crate::cerebrum::event::Command;
 use crate::cerebrum::order::{Manual, OrderGenerator};
+use crate::cerebrum::terminate::Terminated;
 
 /// Commander can transition to:
 ///  a) End
@@ -15,18 +16,22 @@ impl Cerebrum<Commander> {
         match self.state.command {
             Command::Terminate => {
                 // Todo: Do pre-termination tasks
+                println!("Received Command::Terminate");
                 Engine::Terminated(Cerebrum::from(self))
             }
             Command::FetchOpenPositions => {
                 // Todo: Send data to event_tx
+                println!("Received Command::FetchOpenPositions");
                 Engine::Terminated(Cerebrum::from(self))
             }
             Command::ExitPosition => {
                 // Todo: Add relevant metadata for the Position to exit
+                println!("Received Command::ExitPosition");
                 Engine::OrderGeneratorManual(Cerebrum::from((self, ())))
             }
             Command::ExitAllPositions => {
                 // Todo: Add relevant metadata for the Position to exit
+                println!("Received Command::ExitAllPositions");
                 Engine::OrderGeneratorManual(Cerebrum::from((self, ())))
             }
         }

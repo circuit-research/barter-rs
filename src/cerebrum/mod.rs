@@ -1,19 +1,23 @@
+use std::time::Duration;
+use terminate::Terminated;
+use crate::cerebrum::event::{Command, Event};
 use self::{
     account::AccountUpdater,
-    consumer::Consumer,
+    command::Commander,
+    consume::Consumer,
     event::EventFeed,
     market::MarketUpdater,
-    order::{OrderGenerator, Algorithmic, Manual},
-    command::Commander,
+    order::{Algorithmic, Manual, OrderGenerator},
 };
 
 
-mod consumer;
+mod consume;
 mod event;
 mod account;
 mod market;
 mod order;
 mod command;
+mod terminate;
 
 // Todo:
 //  - Do I need an event_q?
@@ -41,14 +45,6 @@ pub struct Cerebrum<State> {
     pub strategy: (),
 }
 
-// pub struct Start;
-pub struct Terminated;
-
-// pub struct Engine<State> {
-//     feed: EventFeed,
-//     cerebrum: Cerebrum<State>
-// }
-
 impl Engine {
     pub fn new(feed: EventFeed) -> Self {
         Self::Consumer(Cerebrum {
@@ -62,8 +58,21 @@ impl Engine {
         })
     }
 
+    pub fn run(mut self) {
+        'trading: loop {
+            // Transition to the next trading state
+            self = self.next();
+
+            // Engine terminated
+
+            if let Engine::Terminated(_) = self {
+                // Todo: Print trading session results & persist
+                break
+            }
+        }
+    }
+
     pub fn next(mut self) -> Self {
-        // Todo: optimise naming here eg/ engine.next_event(), engine.update_from_market()
         match self {
             Self::Consumer(engine) => {
                 engine.next_event()
@@ -91,20 +100,22 @@ impl Engine {
 }
 
 
-#[test]
-fn it_works() {
+#[tokio::test]
+async fn it_works() {
     // EventFeed
     let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel();
     let feed = EventFeed::new(event_rx);
-
     let mut engine = Engine::new(feed);
 
-    let end = 'trading: loop {
-        let x = match engine.next() {
-            Engine::Terminated(end) => {
-                break end;
-            }
-            _ => continue
-        };
-    };
+    std::thread::spawn(move || {
+        engine.run()
+    });
+
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(2)).await;
+        event_tx.send(Event::Command(Command::Terminate));
+    }).await;
+
+
+    tokio::time::sleep(Duration::from_secs(5)).await
 }
