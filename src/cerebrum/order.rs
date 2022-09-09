@@ -1,7 +1,7 @@
 use crate::cerebrum::Engine;
 use super::{
     Cerebrum,
-    consumer::Consumer,
+    consume::Consumer,
 };
 
 /// OrderGenerator can transition to:
