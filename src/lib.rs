@@ -245,6 +245,10 @@ pub mod statistic;
 /// Execution components, as well as shared access to a global Portfolio.
 pub mod engine;
 
+
+/// Todo: WIP PoC Engine
+mod cerebrum;
+
 #[macro_use]
 extern crate prettytable;
 
