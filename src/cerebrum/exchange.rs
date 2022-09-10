@@ -1,11 +1,13 @@
-use super::event::ConnectionStatus;
+use super::{
+    event::{ConnectionStatus, SymbolBalance},
+    account::ClientOrderId,
+    order::{Order, Request},
+};
 use barter_integration::model::Instrument;
 use std::{
     collections::HashMap,
     time::Duration
 };
-use crate::cerebrum::account::ClientOrderId;
-use crate::cerebrum::event::SymbolBalance;
 
 // Todo: May need to have an synchronous interface prior to async for eg/ GenerateClientOrderId
 #[derive(Debug)]
@@ -18,8 +20,8 @@ pub enum ExchangeCommand {
     FetchBalances,
 
     // Open Orders
-    OpenOrder,
-    OpenOrderBatch,
+    OpenOrder(Order<Request>),
+    OpenOrderBatch(Order<Vec<Request>>),
 
     // Cancel Orders
     CancelOrderById,

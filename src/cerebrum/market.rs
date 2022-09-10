@@ -1,14 +1,10 @@
 use super::{
     Cerebrum, Engine, OrderGenerator,
-    order::Algorithmic
+    order::Algorithmic,
+    strategy::IndicatorUpdater,
 };
 use barter_data::model::MarketEvent;
 use tracing::info;
-
-
-pub trait IndicatorUpdater {
-    fn update_indicators(&mut self, market: &MarketEvent);
-}
 
 /// MarketUpdater can transition to:
 ///  a) OrderGenerator<Algorithmic>
