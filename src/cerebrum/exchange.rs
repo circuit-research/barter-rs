@@ -4,7 +4,8 @@ use std::{
     collections::HashMap,
     time::Duration
 };
-use crate::cerebrum::account::{Balance, ClientOrderId};
+use crate::cerebrum::account::ClientOrderId;
+use crate::cerebrum::event::SymbolBalance;
 
 // Todo: May need to have an synchronous interface prior to async for eg/ GenerateClientOrderId
 #[derive(Debug)]
@@ -49,7 +50,7 @@ pub struct SimulatedExchange {
     pub instruments: Vec<Instrument>,
     pub connection_status: ConnectionStatus,
     pub open: HashMap<ClientOrderId, ()>,
-    pub balances: HashMap<Instrument, Balance>,
+    pub balances: HashMap<Instrument, SymbolBalance>,
 }
 
 pub struct SimulationMeta {

@@ -2,7 +2,7 @@ use super::{
     Cerebrum, Engine, OrderGenerator,
     order::Algorithmic
 };
-use barter_data::model::{DataKind, MarketEvent};
+use barter_data::model::MarketEvent;
 
 
 pub trait IndicatorUpdater {
@@ -11,9 +11,6 @@ pub trait IndicatorUpdater {
 
 /// MarketUpdater can transition to:
 ///  a) OrderGenerator<Algorithmic>
-// pub struct MarketUpdater {
-//     pub market: MarketEvent
-// }
 pub struct MarketUpdater;
 
 impl<Strategy> Cerebrum<MarketUpdater, Strategy>
@@ -21,6 +18,8 @@ where
     Strategy: IndicatorUpdater,
 {
     pub fn update_from_market(mut self, market: MarketEvent) -> Engine<Strategy> {
+        println!("update_from_market: {market:?}");
+
         // Update Positions
         self.accounts.update_positions(&market);
 

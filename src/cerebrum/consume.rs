@@ -1,11 +1,10 @@
 use super::{
     Cerebrum, Engine,
-    event::{AccountEvent, Command, Event},
+    event::{Command, Event},
     market::MarketUpdater,
     account::AccountUpdater,
     command::Commander,
 };
-use barter_data::model::MarketEvent;
 
 /// Consumer can transition to one of:
 ///  a) MarketUpdater
@@ -21,7 +20,7 @@ impl<Strategy> Cerebrum<Consumer, Strategy> {
                 Engine::MarketUpdater((Cerebrum::from(self), market))
             }
             Event::Account(account) => {
-                Engine::AccountUpdater(Cerebrum::from((self, account)))
+                Engine::AccountUpdater((Cerebrum::from(self), account))
             }
             Event::Command(command) => {
                 Engine::Commander(Cerebrum::from((self, command)))
@@ -45,10 +44,10 @@ impl<Strategy> From<Cerebrum<Consumer, Strategy>> for Cerebrum<MarketUpdater, St
 }
 
 /// b) Consumer -> AccountUpdater
-impl<Strategy> From<(Cerebrum<Consumer, Strategy>, AccountEvent)> for Cerebrum<AccountUpdater, Strategy> {
-    fn from((cerebrum, account): (Cerebrum<Consumer, Strategy>, AccountEvent)) -> Self {
+impl<Strategy> From<Cerebrum<Consumer, Strategy>> for Cerebrum<AccountUpdater, Strategy> {
+    fn from(cerebrum: Cerebrum<Consumer, Strategy>) -> Self {
         Self {
-            state: AccountUpdater { account },
+            state: AccountUpdater,
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,

@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 use barter_data::model::MarketEvent;
-use barter_integration::model::{Market, Side};
+use barter_integration::model::{Exchange, Instrument, Symbol};
 use uuid::Uuid;
+use crate::cerebrum::event::{AccountEventKind, Balance, SymbolBalance};
 use super::{
     Cerebrum, consume::Consumer,
     Engine,
@@ -10,31 +11,33 @@ use super::{
 
 /// AccountUpdater can transition to:
 ///  a) Consumer
-pub struct AccountUpdater {
-    pub account: AccountEvent,
-}
+pub struct AccountUpdater;
 
 impl<Strategy> Cerebrum<AccountUpdater, Strategy> {
-    pub fn update_from_account(mut self) -> Engine<Strategy> {
+    pub fn update_from_account(mut self, account: AccountEvent) -> Engine<Strategy> {
         // Update Positions, Statistics, Indicators
-        match self.state.account {
-            AccountEvent::OrderNew => {
+        match account.kind {
+            AccountEventKind::OrderNew => {
                 // Todo:
                 println!("update_from_account: OrderNew");
             }
-            AccountEvent::OrderCancelled => {
+            AccountEventKind::OrderCancelled => {
                 // Todo:
                 println!("update_from_account: OrderCancelled");
             }
-            AccountEvent::Trade => {
+            AccountEventKind::Trade => {
                 // Todo:
                 println!("update_from_account: Trade");
             }
-            AccountEvent::Balances => {
-                // Todo:
-                println!("update_from_account: Balances");
+            AccountEventKind::Balance(balance) => {
+                println!("update_from_account: Balance");
+                self.accounts.update_balance(&account.exchange, &balance);
             }
-            AccountEvent::ConnectionStatus(status) => {
+            AccountEventKind::Balances(balances) => {
+                println!("update_from_account: Balances");
+                self.accounts.update_balances(&account.exchange, &balances);
+            }
+            AccountEventKind::ConnectionStatus(status) => {
                 // Todo:
                 println!("update_from_account: {status:?}");
             }
@@ -59,32 +62,48 @@ impl<Strategy> From<Cerebrum<AccountUpdater, Strategy>> for Cerebrum<Consumer, S
     }
 }
 
-pub struct Accounts {
-    pub balances: HashMap<Market, Balance>,
-    pub positions: HashMap<Market, Position>,
+
+pub struct Accounts(pub HashMap<Exchange, Account>);
+
+pub struct Account {
+    pub balances: HashMap<Symbol, Balance>,
+    pub positions: HashMap<Instrument, Position>,
     pub orders: Orders,
 }
 
 impl Accounts {
+    pub fn account(&mut self, exchange: &Exchange) -> &mut Account {
+        self.0
+            .get_mut(exchange)
+            .expect("cannot retrieve Account for unexpected Exchange")
+    }
+
+    pub fn update_balance(&mut self, exchange: &Exchange, balance: &SymbolBalance) {
+        self.account(exchange)
+            .balances
+            .get_mut(&balance.symbol)
+            .and_then(|account_balance| {
+                account_balance.total = balance.balance.total;
+                account_balance.available = balance.balance.available;
+                Some(account_balance)
+            })
+            .expect("cannot update Balance for unexpected Symbol");
+    }
+
+    pub fn update_balances(&mut self, exchange: &Exchange, balances: &Vec<SymbolBalance>) {
+        balances
+            .into_iter()
+            .for_each(|balance| self.update_balance(exchange, balance))
+    }
+
     pub fn update_positions(&mut self, market: &MarketEvent) {
         // Todo: Update relevant Positions
     }
 }
 
-pub struct Balance {
-    pub total: f64,
-    pub available: f64,
-}
-
 pub struct Position;
-
 pub struct Orders {
     pub in_flight: HashMap<ClientOrderId, ()>,
     pub open: HashMap<ClientOrderId, ()>,
 }
-
 pub struct ClientOrderId(pub Uuid);
-
-impl Accounts {
-
-}
