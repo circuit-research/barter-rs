@@ -1,6 +1,8 @@
-use crate::cerebrum::{Cerebrum, Engine};
-use crate::cerebrum::consume::Consumer;
-use crate::cerebrum::event::AccountEvent;
+use super::{
+    Engine, Cerebrum,
+    event::AccountEvent,
+    consume::Consumer,
+};
 
 /// AccountUpdater can transition to:
 ///  a) Consumer
@@ -36,11 +38,9 @@ impl From<Cerebrum<AccountUpdater>> for Cerebrum<Consumer> {
         Self {
             state: Consumer,
             feed: cerebrum.feed,
-            event_tx: cerebrum.event_tx,
-            balances: cerebrum.balances,
-            orders: cerebrum.orders,
-            positions: cerebrum.positions,
+            accounts: cerebrum.accounts,
             strategy: cerebrum.strategy,
+            event_tx: cerebrum.event_tx,
         }
     }
 }
