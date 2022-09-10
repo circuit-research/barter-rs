@@ -1,9 +1,8 @@
-use barter_data::model::MarketEvent;
 use self::{
-    account::AccountUpdater,
+    account::{Accounts, AccountUpdater},
     command::Commander,
     consume::Consumer,
-    event::EventFeed,
+    event::{AccountEvent, EventFeed},
     exchange::ExchangeCommand,
     initialise::Initialiser,
     market::MarketUpdater,
@@ -11,11 +10,9 @@ use self::{
     terminate::Terminated,
 };
 use crate::engine::error::EngineError;
+use barter_data::model::MarketEvent;
 use tokio::sync::mpsc;
-use account::Accounts;
-use crate::cerebrum::event::AccountEvent;
-use crate::cerebrum::market::IndicatorUpdater;
-
+use strategy::IndicatorUpdater;
 
 mod consume;
 mod event;
@@ -26,10 +23,10 @@ mod command;
 mod terminate;
 mod initialise;
 mod exchange;
+mod strategy;
 
 // Todo:
 //  - Derive as eagerly as possible
-//  - Do I need an event_q?
 //  - Add metric_tx stub?
 //  - Determine what fields go in what state later
 //  - Will need some startup States to go from New -> Initialised
@@ -43,7 +40,6 @@ mod exchange;
 //  - Feed needs some work to be more like MarketFeed w/ Feed struct? etc.
 //  - Account or Portfolio? Change name of AccountUpdater and AccountEvent if we do change, etc.
 //  - Should the Strategy have control over 'Account'?
-//  - Will we add a new
 //  - Engine will also have control of spawning the execution clients, presumably...?
 //   '--> Perhaps Engine will need to be a struct and enum Engine -> CerebrumState/TradingState/Trader
 //   '--> Perhaps the builder could do the Init of Cerebrum in a blocking way
@@ -54,22 +50,15 @@ mod exchange;
 //  - AccountUpdater no longer updates Positions & Statistics, but just Indicators -> this may change back?
 //   '--> If we only update Indicators, would this become SignalUpdater?
 //  - Send Events to the audit_tx eg/ update_from_market { event_tx.send(market).unwrap() }
-//  - Rather than tuple, could have eg/ MarketUpdater { Cerebrum, MarketEvent } where Cerebrum has no State
-//   '--> States are defined by the parent structure housing the Cerebrum... might be nicer?
 //  - Is it valid to have a SymbolBalance, or do we need the idea of SymbolInstrumentKindBalance?
 //  - Update Balances can be more efficient since we know what Markets we trade at the start
+//   '--> Change update_balance() .expect() for error! like open orde rlogic
 //   '--> Can ignore anything which contains_key() returns None etc
-//   '--> Get it to work without cloning etc. eg/ HashMap<&'a Market, Balance>
-//       '--> Engine / Cerebrum should start up with a bunch of Markets (however we are using exchange + symbol)
 //  - More efficient to use Accounts(Vec<(Exchange, Account)) (or have Exchange inside Account?
 //    '--> Benchmark, but probably faster for since people won't use many exchanges at once?
 //  - Work out how to do fees for trade, and add Liquidity field?
 //  - Impl display for MarketEvent, AccountEvent, Command
-//  - Add abstractions later, eg/ AccountManager, OrderManager
-//  - What happens if we get a Order<Cancelled> through whilst it's InFlight?
 //  - Could make Account generic to give it functionality to generate appropriate Cid?
-//  - Document that fact that when I update_orders_from_cancel that I'm expecting a AccountBalance to come
-//    through from Exchange, rather than calculate that myself.
 //  - Ensure I am happy with log levels after dev. eg/ update_order_from_cancel logs at worn if we
 //    cancel in flight order
 //  - self.accounts.update_orders_from_open(&order); is taking ref & cloning - only makes sense if
