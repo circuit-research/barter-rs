@@ -7,6 +7,7 @@ use std::{
 use crate::cerebrum::account::{Balance, ClientOrderId};
 
 // Todo: May need to have an synchronous interface prior to async for eg/ GenerateClientOrderId
+#[derive(Debug)]
 pub enum ExchangeCommand {
     // Check connection status
     ConnectionStatus,

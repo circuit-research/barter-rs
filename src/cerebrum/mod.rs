@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use barter_data::model::MarketEvent;
 use barter_integration::model::Market;
 use self::{
     account::AccountUpdater,
@@ -54,11 +55,14 @@ mod exchange;
 //   '--> How to track PnL? What is a Position?
 //  - AccountUpdater no longer updates Positions & Statistics, but just Indicators -> this may change back?
 //   '--> If we only update Indicators, would this become SignalUpdater?
+//  - Send Events to the audit_tx eg/ update_from_market { event_tx.send(market).unwrap() }
+//  - Rather than tuple, could have eg/ MarketUpdater { Cerebrum, MarketEvent } where Cerebrum has no State
+//   '--> States are defined by the parent structure housing the Cerebrum... might be nicer?
 
 pub enum Engine<Strategy> {
     Initialiser(Cerebrum<Initialiser, Strategy>),
     Consumer(Cerebrum<Consumer, Strategy>),
-    MarketUpdater(Cerebrum<MarketUpdater, Strategy>),
+    MarketUpdater((Cerebrum<MarketUpdater, Strategy>, MarketEvent)),
     OrderGeneratorAlgorithmic(Cerebrum<OrderGenerator<Algorithmic>, Strategy>),
     OrderGeneratorManual(Cerebrum<OrderGenerator<Manual>, Strategy>),
     AccountUpdater(Cerebrum<AccountUpdater, Strategy>),
@@ -72,7 +76,7 @@ pub struct Cerebrum<State, Strategy> {
     pub accounts: Accounts,
     pub exchange_tx: mpsc::UnboundedSender<ExchangeCommand>,
     pub strategy: Strategy,
-    pub event_tx: (),
+    pub audit_tx: (),
 }
 
 impl<Strategy> Engine<Strategy>
@@ -103,8 +107,8 @@ where
             Self::Consumer(engine) => {
                 engine.next_event()
             },
-            Self::MarketUpdater(engine) => {
-                engine.update_from_market_event()
+            Self::MarketUpdater((engine, market)) => {
+                engine.update_from_market(market)
             },
             Self::OrderGeneratorAlgorithmic(engine) => {
                 engine.generate_order()
@@ -113,7 +117,7 @@ where
                 engine.generate_order_manual()
             },
             Self::AccountUpdater(engine) => {
-                engine.update_from_account_event()
+                engine.update_from_account()
             }
             Self::Commander(engine) => {
                 engine.action_manual_command()
@@ -132,7 +136,7 @@ pub struct EngineBuilder<Strategy> {
     pub accounts: Option<Accounts>,
     pub exchange_tx: Option<mpsc::UnboundedSender<ExchangeCommand>>,
     pub strategy: Option<Strategy>,
-    pub event_tx: Option<()>,
+    pub audit_tx: Option<()>,
 }
 
 impl<Strategy> EngineBuilder<Strategy> {
@@ -142,7 +146,7 @@ impl<Strategy> EngineBuilder<Strategy> {
             accounts: None,
             exchange_tx: None,
             strategy: None,
-            event_tx: None
+            audit_tx: None
         }
     }
 
@@ -174,9 +178,9 @@ impl<Strategy> EngineBuilder<Strategy> {
         }
     }
 
-    pub fn event_tx(self, value: ()) -> Self {
+    pub fn audit_tx(self, value: ()) -> Self {
         Self {
-            event_tx: Some(value),
+            audit_tx: Some(value),
             ..self
         }
     }
@@ -188,7 +192,7 @@ impl<Strategy> EngineBuilder<Strategy> {
             accounts: self.accounts.ok_or(EngineError::BuilderIncomplete("account"))?,
             exchange_tx: self.exchange_tx.ok_or(EngineError::BuilderIncomplete("exchange_tx"))?,
             strategy: self.strategy.ok_or(EngineError::BuilderIncomplete("strategy"))?,
-            event_tx: self.event_tx.ok_or(EngineError::BuilderIncomplete("event_tx"))?,
+            audit_tx: self.audit_tx.ok_or(EngineError::BuilderIncomplete("audit_tx"))?,
         }))
     }
 }
@@ -254,6 +258,7 @@ mod tests {
         // Accounts
         let accounts = Accounts {
             balances: HashMap::new(),
+            positions: HashMap::new(),
             orders: Orders { in_flight: HashMap::new(), open: HashMap::new() }
         };
 
@@ -268,14 +273,14 @@ mod tests {
         let strategy = StubbedStrategy;
 
         impl IndicatorUpdater for StubbedStrategy {
-            fn update(&mut self, market: MarketEvent) {
+            fn update_indicators(&mut self, market: &MarketEvent) {
                 println!("update indicators from market: {market:?}");
             }
         }
 
         let mut engine = Engine::builder()
             .feed(feed)
-            .event_tx(())
+            .audit_tx(())
             .accounts(accounts)
             .exchange_tx(exchange_tx)
             .strategy(StubbedStrategy)

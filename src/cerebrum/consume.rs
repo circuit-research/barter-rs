@@ -18,7 +18,7 @@ impl<Strategy> Cerebrum<Consumer, Strategy> {
         // Consume next Event
         match self.feed.next() {
             Event::Market(market) => {
-                Engine::MarketUpdater(Cerebrum::from((self, market)))
+                Engine::MarketUpdater((Cerebrum::from(self), market))
             }
             Event::Account(account) => {
                 Engine::AccountUpdater(Cerebrum::from((self, account)))
@@ -31,15 +31,15 @@ impl<Strategy> Cerebrum<Consumer, Strategy> {
 }
 
 /// a) Consumer -> MarketUpdater
-impl<Strategy> From<(Cerebrum<Consumer, Strategy>, MarketEvent)> for Cerebrum<MarketUpdater, Strategy> {
-    fn from((cerebrum, market): (Cerebrum<Consumer, Strategy>, MarketEvent)) -> Self {
+impl<Strategy> From<Cerebrum<Consumer, Strategy>> for Cerebrum<MarketUpdater, Strategy> {
+    fn from(cerebrum: Cerebrum<Consumer, Strategy>) -> Self {
         Self {
-            state: MarketUpdater { market },
+            state: MarketUpdater,
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
-            event_tx: cerebrum.event_tx,
+            audit_tx: cerebrum.audit_tx,
         }
     }
 }
@@ -53,7 +53,7 @@ impl<Strategy> From<(Cerebrum<Consumer, Strategy>, AccountEvent)> for Cerebrum<A
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
-            event_tx: cerebrum.event_tx,
+            audit_tx: cerebrum.audit_tx,
         }
     }
 }
@@ -67,7 +67,7 @@ impl<Strategy> From<(Cerebrum<Consumer, Strategy>, Command)> for Cerebrum<Comman
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
-            event_tx: cerebrum.event_tx,
+            audit_tx: cerebrum.audit_tx,
         }
     }
 }

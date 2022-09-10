@@ -22,7 +22,7 @@ impl<Strategy> From<Cerebrum<Initialiser, Strategy>> for Cerebrum<Consumer, Stra
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
-            event_tx: cerebrum.event_tx,
+            audit_tx: cerebrum.audit_tx,
         }
     }
 }
@@ -36,7 +36,7 @@ impl<Strategy> From<Cerebrum<Initialiser, Strategy>> for Cerebrum<Terminated, St
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
-            event_tx: cerebrum.event_tx,
+            audit_tx: cerebrum.audit_tx,
         }
     }
 }

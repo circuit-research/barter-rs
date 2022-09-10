@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use barter_data::model::MarketEvent;
 use barter_integration::model::{Market, Side};
 use uuid::Uuid;
 use super::{
@@ -14,7 +15,7 @@ pub struct AccountUpdater {
 }
 
 impl<Strategy> Cerebrum<AccountUpdater, Strategy> {
-    pub fn update_from_account_event(mut self) -> Engine<Strategy> {
+    pub fn update_from_account(mut self) -> Engine<Strategy> {
         // Update Positions, Statistics, Indicators
         match self.state.account {
             AccountEvent::OrderNew => {
@@ -53,20 +54,29 @@ impl<Strategy> From<Cerebrum<AccountUpdater, Strategy>> for Cerebrum<Consumer, S
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
-            event_tx: cerebrum.event_tx,
+            audit_tx: cerebrum.audit_tx,
         }
     }
 }
 
 pub struct Accounts {
     pub balances: HashMap<Market, Balance>,
+    pub positions: HashMap<Market, Position>,
     pub orders: Orders,
+}
+
+impl Accounts {
+    pub fn update_positions(&mut self, market: &MarketEvent) {
+        // Todo: Update relevant Positions
+    }
 }
 
 pub struct Balance {
     pub total: f64,
     pub available: f64,
 }
+
+pub struct Position;
 
 pub struct Orders {
     pub in_flight: HashMap<ClientOrderId, ()>,
