@@ -5,13 +5,14 @@ use self::{
     account::AccountUpdater,
     command::Commander,
     consume::Consumer,
+    exchange::ExchangeCommand,
     terminate::Terminated,
     order::{Algorithmic, Manual, OrderGenerator},
 };
 use crate::{
     engine::error::EngineError,
 };
-
+use tokio::sync::mpsc;
 
 
 mod consume;
@@ -22,6 +23,7 @@ mod order;
 mod command;
 mod terminate;
 mod initialise;
+mod exchange;
 
 // Todo:
 //  - Derive as eagerly as possible
@@ -59,6 +61,7 @@ pub struct Cerebrum<State> {
     pub state: State,
     pub feed: EventFeed,
     pub accounts: Accounts,
+    pub exchange_tx: mpsc::UnboundedSender<ExchangeCommand>,
     pub strategy: (),
     pub event_tx: (),
 }
@@ -121,6 +124,7 @@ impl Engine {
 pub struct EngineBuilder {
     pub feed: Option<EventFeed>,
     pub accounts: Option<Accounts>,
+    pub exchange_tx: Option<mpsc::UnboundedSender<ExchangeCommand>>,
     pub strategy: Option<()>,
     pub event_tx: Option<()>,
 }
@@ -144,6 +148,13 @@ impl EngineBuilder {
         }
     }
 
+    pub fn exchange_tx(self, value: mpsc::UnboundedSender<ExchangeCommand>) -> Self {
+        Self {
+            exchange_tx: Some(value),
+            ..self
+        }
+    }
+
     pub fn strategy(self, value: ()) -> Self {
         Self {
             strategy: Some(value),
@@ -163,6 +174,7 @@ impl EngineBuilder {
             state: Initialiser,
             feed: self.feed.ok_or(EngineError::BuilderIncomplete("engine_id"))?,
             accounts: self.accounts.ok_or(EngineError::BuilderIncomplete("account"))?,
+            exchange_tx: self.exchange_tx.ok_or(EngineError::BuilderIncomplete("exchange_tx"))?,
             strategy: self.strategy.ok_or(EngineError::BuilderIncomplete("strategy"))?,
             event_tx: self.event_tx.ok_or(EngineError::BuilderIncomplete("event_tx"))?,
         }))
@@ -176,7 +188,7 @@ mod tests {
     use barter_data::model::SubKind;
     use barter_integration::model::InstrumentKind;
     use tokio::sync::mpsc;
-    use crate::cerebrum::event::{Command, Event};
+    use crate::cerebrum::event::{AccountEvent, Command, Event};
     use crate::data::live::MarketFeed;
     use super::*;
 
@@ -207,6 +219,16 @@ mod tests {
         });
     }
 
+    async fn account_feed(event_tx: mpsc::UnboundedSender<Event>) {
+        std::thread::spawn(move || {
+            loop {
+                event_tx.send(Event::Account(AccountEvent::Balances));
+                std::thread::sleep(Duration::from_secs(2));
+                event_tx.send(Event::Account(AccountEvent::Trade));
+            };
+        });
+    }
+
     #[tokio::test]
     async fn it_works() {
         // EventFeed
@@ -219,10 +241,17 @@ mod tests {
         // Accounts
         let accounts = Accounts { balances: (), positions: (), orders: ()};
 
+        // ExchangeCommandTx
+        let (exchange_tx, exchange_rx) = mpsc::unbounded_channel();
+
+        // Spawn STUBBED AccountFEed on separate thread
+        account_feed(event_tx.clone()).await;
+
         let mut engine = Engine::builder()
             .feed(feed)
             .event_tx(())
             .accounts(accounts)
+            .exchange_tx(exchange_tx)
             .strategy(())
             .build()
             .unwrap();
@@ -232,12 +261,12 @@ mod tests {
         });
 
         tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(5)).await;
+            tokio::time::sleep(Duration::from_secs(30)).await;
             event_tx.send(Event::Command(Command::Terminate));
         }).await;
 
 
-        tokio::time::sleep(Duration::from_secs(6)).await
+        tokio::time::sleep(Duration::from_secs(32)).await
     }
 
 }

@@ -39,6 +39,7 @@ impl<State> From<Cerebrum<OrderGenerator<State>>> for Cerebrum<Consumer> {
             state: Consumer,
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
+            exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
             event_tx: cerebrum.event_tx,
         }

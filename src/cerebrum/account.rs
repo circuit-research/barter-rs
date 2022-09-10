@@ -15,16 +15,24 @@ impl Cerebrum<AccountUpdater> {
         // Update Positions, Statistics, Indicators
         match self.state.account {
             AccountEvent::OrderNew => {
-                todo!()
+                // Todo:
+                println!("update_from_account: OrderNew");
             }
             AccountEvent::OrderCancelled => {
-                todo!()
+                // Todo:
+                println!("update_from_account: OrderCancelled");
             }
             AccountEvent::Trade => {
-                todo!()
+                // Todo:
+                println!("update_from_account: :Trade");
             }
             AccountEvent::Balances => {
-                todo!()
+                // Todo:
+                println!("update_from_account: Balances");
+            }
+            AccountEvent::Disconnected => {
+                // Todo:
+                println!("update_from_account: Disconnected");
             }
         };
 
@@ -39,6 +47,7 @@ impl From<Cerebrum<AccountUpdater>> for Cerebrum<Consumer> {
             state: Consumer,
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
+            exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
             event_tx: cerebrum.event_tx,
         }
