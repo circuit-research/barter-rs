@@ -47,7 +47,7 @@ impl<Strategy> From<Cerebrum<Commander, Strategy>> for Cerebrum<Terminated, Stra
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
-            event_tx: cerebrum.event_tx,
+            audit_tx: cerebrum.audit_tx,
         }
     }
 }
@@ -61,7 +61,7 @@ impl<Strategy> From<(Cerebrum<Commander, Strategy>, ())> for Cerebrum<OrderGener
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
-            event_tx: cerebrum.event_tx,
+            audit_tx: cerebrum.audit_tx,
         }
     }
 }
