@@ -1,6 +1,4 @@
-use std::collections::HashMap;
 use barter_data::model::MarketEvent;
-use barter_integration::model::Market;
 use self::{
     account::AccountUpdater,
     command::Commander,
@@ -14,8 +12,8 @@ use self::{
 };
 use crate::engine::error::EngineError;
 use tokio::sync::mpsc;
-use uuid::Uuid;
 use account::Accounts;
+use crate::cerebrum::event::AccountEvent;
 use crate::cerebrum::market::IndicatorUpdater;
 
 
@@ -58,6 +56,11 @@ mod exchange;
 //  - Send Events to the audit_tx eg/ update_from_market { event_tx.send(market).unwrap() }
 //  - Rather than tuple, could have eg/ MarketUpdater { Cerebrum, MarketEvent } where Cerebrum has no State
 //   '--> States are defined by the parent structure housing the Cerebrum... might be nicer?
+//  - Is it valid to have a SymbolBalance, or do we need the idea of SymbolInstrumentKindBalance?
+//  - Update Balances can be more efficient since we know what Markets we trade at the start
+//   '--> Can ignore anything which contains_key() returns None etc
+//   '--> Get it to work without cloning etc. eg/ HashMap<&'a Market, Balance>
+//       '--> Engine / Cerebrum should start up with a bunch of Markets (however we are using exchange + symbol)
 
 pub enum Engine<Strategy> {
     Initialiser(Cerebrum<Initialiser, Strategy>),
@@ -65,7 +68,7 @@ pub enum Engine<Strategy> {
     MarketUpdater((Cerebrum<MarketUpdater, Strategy>, MarketEvent)),
     OrderGeneratorAlgorithmic(Cerebrum<OrderGenerator<Algorithmic>, Strategy>),
     OrderGeneratorManual(Cerebrum<OrderGenerator<Manual>, Strategy>),
-    AccountUpdater(Cerebrum<AccountUpdater, Strategy>),
+    AccountUpdater((Cerebrum<AccountUpdater, Strategy>, AccountEvent)),
     Commander(Cerebrum<Commander, Strategy>),
     Terminated(Cerebrum<Terminated, Strategy>),
 }
@@ -101,29 +104,29 @@ where
 
     pub fn next(mut self) -> Self {
         match self {
-            Self::Initialiser(engine) => {
-                engine.init()
+            Self::Initialiser(cerebrum) => {
+                cerebrum.init()
             }
-            Self::Consumer(engine) => {
-                engine.next_event()
+            Self::Consumer(cerebrum) => {
+                cerebrum.next_event()
             },
-            Self::MarketUpdater((engine, market)) => {
-                engine.update_from_market(market)
+            Self::MarketUpdater((cerebrum, market)) => {
+                cerebrum.update_from_market(market)
             },
-            Self::OrderGeneratorAlgorithmic(engine) => {
-                engine.generate_order()
+            Self::OrderGeneratorAlgorithmic(cerebrum) => {
+                cerebrum.generate_order()
             }
-            Self::OrderGeneratorManual(engine) => {
-                engine.generate_order_manual()
+            Self::OrderGeneratorManual(cerebrum) => {
+                cerebrum.generate_order_manual()
             },
-            Self::AccountUpdater(engine) => {
-                engine.update_from_account()
+            Self::AccountUpdater((cerebrum, account)) => {
+                cerebrum.update_from_account(account)
             }
-            Self::Commander(engine) => {
-                engine.action_manual_command()
+            Self::Commander(cerebrum) => {
+                cerebrum.action_manual_command()
             }
-            Self::Terminated(engine) => {
-                Self::Terminated(engine)
+            Self::Terminated(cerebrum) => {
+                Self::Terminated(cerebrum)
             }
         }
     }
@@ -202,18 +205,19 @@ mod tests {
     use std::time::Duration;
     use barter_data::ExchangeId;
     use barter_data::model::{MarketEvent, SubKind};
-    use barter_integration::model::InstrumentKind;
+    use barter_integration::model::{Exchange, Instrument, InstrumentKind, Market, Symbol};
     use tokio::sync::mpsc;
-    use crate::cerebrum::account::Orders;
-    use crate::cerebrum::event::{AccountEvent, Command, Event};
+    use crate::cerebrum::account::{Account, Orders, Position};
+    use crate::cerebrum::event::{AccountEvent, AccountEventKind, Balance, Command, Event, SymbolBalance};
     use crate::data::live::MarketFeed;
     use super::*;
 
-    async fn market_feed(event_tx: mpsc::UnboundedSender<Event>) {
+    async fn market_feed(markets: Vec<Market>, event_tx: mpsc::UnboundedSender<Event>) {
         // MarketFeed
         // Todo:
         //  - Does this need to be changed for ergonomics to produce an EventFeed rather than MarketFeed?
         //  - We want to ensure that heavy MarketFeed processing is occurring on it's own thread (not task since it's busy loop)
+
         let mut market = MarketFeed::init([
             (ExchangeId::Ftx, "btc", "usdt", InstrumentKind::FuturePerpetual, SubKind::Trade),
             (ExchangeId::Ftx, "eth", "usdt", InstrumentKind::FuturePerpetual, SubKind::Trade),
@@ -239,28 +243,75 @@ mod tests {
     async fn account_feed(event_tx: mpsc::UnboundedSender<Event>) {
         std::thread::spawn(move || {
             loop {
-                event_tx.send(Event::Account(AccountEvent::Balances));
+                event_tx.send(Event::Account(account_event(AccountEventKind::Balance(SymbolBalance {
+                    symbol: Symbol::from("btc"),
+                    balance: Balance { total: 1000.0, available: 500.0 }
+                }))));
+
                 std::thread::sleep(Duration::from_secs(2));
-                event_tx.send(Event::Account(AccountEvent::Trade));
+
+                event_tx.send(Event::Account(account_event(AccountEventKind::Trade)));
             };
         });
     }
 
+    fn account_event(kind: AccountEventKind) -> AccountEvent {
+        AccountEvent {
+            exchange_time: Default::default(),
+            received_time: Default::default(),
+            exchange: Exchange::from(ExchangeId::Ftx),
+            kind
+        }
+    }
+
+    fn account(instruments: Vec<Instrument>) -> Account {
+        let positions = instruments
+            .iter()
+            .cloned()
+            .map(|instrument| (instrument, Position))
+            .collect();
+
+        let mut balances = instruments
+            .into_iter()
+            .map(|instrument| [instrument.base, instrument.quote])
+            .flatten()
+            .map(|symbol| (symbol, Balance { total: 0.0, available: 0.0 }))
+            .collect();
+
+        Account {
+            balances,
+            positions,
+            orders: Orders { in_flight: HashMap::new(), open: HashMap::new() }
+        }
+    }
+
     #[tokio::test]
     async fn it_works() {
+        // Markets
+        let exchange = Exchange::from(ExchangeId::Ftx);
+        let markets = vec![
+            Market::new(exchange.clone(), ("btc", "usdt", InstrumentKind::FuturePerpetual)),
+            Market::new(exchange.clone(), ("eth", "usdt", InstrumentKind::FuturePerpetual)),
+        ];
+
         // EventFeed
         let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel();
         let feed = EventFeed::new(event_rx);
 
         // Spawn MarketFeed on separate thread
-        market_feed(event_tx.clone()).await;
+        market_feed(markets.clone(), event_tx.clone()).await;
 
         // Accounts
-        let accounts = Accounts {
-            balances: HashMap::new(),
-            positions: HashMap::new(),
-            orders: Orders { in_flight: HashMap::new(), open: HashMap::new() }
-        };
+        let instruments = markets
+            .into_iter()
+            .map(|market| {
+                let Market { exchange, instrument } = market;
+                instrument
+            })
+            .collect();
+
+        let mut accounts = HashMap::new();
+        accounts.insert(exchange.clone(), account(instruments));
 
         // ExchangeCommandTx
         let (exchange_tx, exchange_rx) = mpsc::unbounded_channel();
@@ -274,14 +325,13 @@ mod tests {
 
         impl IndicatorUpdater for StubbedStrategy {
             fn update_indicators(&mut self, market: &MarketEvent) {
-                println!("update indicators from market: {market:?}");
             }
         }
 
         let mut engine = Engine::builder()
             .feed(feed)
             .audit_tx(())
-            .accounts(accounts)
+            .accounts(Accounts(accounts))
             .exchange_tx(exchange_tx)
             .strategy(StubbedStrategy)
             .build()

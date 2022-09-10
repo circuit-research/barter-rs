@@ -1,17 +1,30 @@
 use barter_data::model::MarketEvent;
+use barter_integration::model::{Exchange, Symbol};
+use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
 
+#[derive(Debug)]
 pub enum Event {
     Market(MarketEvent),
     Account(AccountEvent),
     Command(Command),
 }
 
-pub enum AccountEvent { // Todo: Perhaps struct with ExchangeId at the top level and timestamp, etc.
+#[derive(Debug)]
+pub struct AccountEvent {
+    pub exchange_time: DateTime<Utc>,
+    pub received_time: DateTime<Utc>,
+    pub exchange: Exchange,
+    pub kind: AccountEventKind,
+}
+
+#[derive(Debug)]
+pub enum AccountEventKind {
     OrderNew,
     OrderCancelled,
     Trade,
-    Balances,
+    Balance(SymbolBalance),
+    Balances(Vec<SymbolBalance>),
     ConnectionStatus(ConnectionStatus),
 }
 
@@ -21,6 +34,8 @@ pub enum ConnectionStatus {
     CancelOnly,
     Disconnected,
 }
+
+#[derive(Debug)]
 pub enum Command {
     Terminate,
     FetchOpenPositions,
@@ -46,4 +61,16 @@ impl EventFeed {
             }
         }
     }
+}
+
+#[derive(Debug)]
+pub struct SymbolBalance {
+    pub symbol: Symbol,
+    pub balance: Balance,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Balance {
+    pub total: f64,
+    pub available: f64,
 }
