@@ -1,5 +1,5 @@
 use super::{Balance, ClientOrderId, event::ConnectionStatus};
-use barter_integration::model::{Instrument, Market};
+use barter_integration::model::Instrument;
 use std::{
     time::Duration,
     collections::HashMap

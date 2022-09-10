@@ -10,8 +10,8 @@ pub struct Commander {
     pub command: Command,
 }
 
-impl Cerebrum<Commander> {
-    pub fn action_manual_command(mut self) -> Engine {
+impl<Strategy> Cerebrum<Commander, Strategy> {
+    pub fn action_manual_command(mut self) -> Engine<Strategy> {
         // Action Command
         match self.state.command {
             Command::Terminate => {
@@ -39,8 +39,8 @@ impl Cerebrum<Commander> {
 }
 
 /// a) Commander -> End
-impl From<Cerebrum<Commander>> for Cerebrum<Terminated> {
-    fn from(cerebrum: Cerebrum<Commander>) -> Self {
+impl<Strategy> From<Cerebrum<Commander, Strategy>> for Cerebrum<Terminated, Strategy> {
+    fn from(cerebrum: Cerebrum<Commander, Strategy>) -> Self {
         Self {
             state: Terminated,
             feed: cerebrum.feed,
@@ -53,8 +53,8 @@ impl From<Cerebrum<Commander>> for Cerebrum<Terminated> {
 }
 
 /// b) Commander -> OrderGenerator<Manual>
-impl From<(Cerebrum<Commander>, ())> for Cerebrum<OrderGenerator<Manual>> {
-    fn from((cerebrum, meta): (Cerebrum<Commander>, ())) -> Self {
+impl<Strategy> From<(Cerebrum<Commander, Strategy>, ())> for Cerebrum<OrderGenerator<Manual>, Strategy> {
+    fn from((cerebrum, meta): (Cerebrum<Commander, Strategy>, ())) -> Self {
         Self {
             state: OrderGenerator { state: Manual { meta }},
             feed: cerebrum.feed,
