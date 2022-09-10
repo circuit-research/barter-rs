@@ -14,7 +14,7 @@ use super::{
 pub struct AccountUpdater;
 
 impl<Strategy> Cerebrum<AccountUpdater, Strategy> {
-    pub fn update_from_account(mut self, account: AccountEvent) -> Engine<Strategy> {
+    pub fn update(mut self, account: AccountEvent) -> Engine<Strategy> {
         // Update Positions, Statistics, Indicators
         match account.kind {
             AccountEventKind::OrderNew => {
@@ -79,12 +79,15 @@ impl Accounts {
     }
 
     pub fn update_balance(&mut self, exchange: &Exchange, balance: &SymbolBalance) {
-        self.account(exchange)
+         self.account(exchange)
             .balances
             .get_mut(&balance.symbol)
             .and_then(|account_balance| {
                 account_balance.total = balance.balance.total;
                 account_balance.available = balance.balance.available;
+
+                println!("Symbol: {}, New Balance: {:?}", balance.symbol, account_balance);
+
                 Some(account_balance)
             })
             .expect("cannot update Balance for unexpected Symbol");

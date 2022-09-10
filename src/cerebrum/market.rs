@@ -17,7 +17,7 @@ impl<Strategy> Cerebrum<MarketUpdater, Strategy>
 where
     Strategy: IndicatorUpdater,
 {
-    pub fn update_from_market(mut self, market: MarketEvent) -> Engine<Strategy> {
+    pub fn update(mut self, market: MarketEvent) -> Engine<Strategy> {
         println!("update_from_market: {market:?}");
 
         // Update Positions

@@ -61,6 +61,8 @@ mod exchange;
 //   '--> Can ignore anything which contains_key() returns None etc
 //   '--> Get it to work without cloning etc. eg/ HashMap<&'a Market, Balance>
 //       '--> Engine / Cerebrum should start up with a bunch of Markets (however we are using exchange + symbol)
+//  - More efficient to use Accounts(Vec<(Exchange, Account)) (or have Exchange inside Account?
+//    '--> Benchmark, but probably faster for since people won't use many exchanges at once?
 
 pub enum Engine<Strategy> {
     Initialiser(Cerebrum<Initialiser, Strategy>),
@@ -111,7 +113,7 @@ where
                 cerebrum.next_event()
             },
             Self::MarketUpdater((cerebrum, market)) => {
-                cerebrum.update_from_market(market)
+                cerebrum.update(market)
             },
             Self::OrderGeneratorAlgorithmic(cerebrum) => {
                 cerebrum.generate_order()
@@ -120,7 +122,7 @@ where
                 cerebrum.generate_order_manual()
             },
             Self::AccountUpdater((cerebrum, account)) => {
-                cerebrum.update_from_account(account)
+                cerebrum.update(account)
             }
             Self::Commander(cerebrum) => {
                 cerebrum.action_manual_command()
@@ -202,6 +204,7 @@ impl<Strategy> EngineBuilder<Strategy> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
     use std::time::Duration;
     use barter_data::ExchangeId;
     use barter_data::model::{MarketEvent, SubKind};
@@ -243,14 +246,30 @@ mod tests {
     async fn account_feed(event_tx: mpsc::UnboundedSender<Event>) {
         std::thread::spawn(move || {
             loop {
-                event_tx.send(Event::Account(account_event(AccountEventKind::Balance(SymbolBalance {
-                    symbol: Symbol::from("btc"),
-                    balance: Balance { total: 1000.0, available: 500.0 }
-                }))));
+                event_tx.send(Event::Account(account_event(AccountEventKind::Balance(
+                    // Same as at start, but test single Balance AccountEvent
+                    SymbolBalance {
+                        symbol: Symbol::from("usdt"),
+                        balance: Balance { total: 1000.0, available: 1000.0 }
+                    }
+                ))));
 
                 std::thread::sleep(Duration::from_secs(2));
 
-                event_tx.send(Event::Account(account_event(AccountEventKind::Trade)));
+                event_tx.send(Event::Account(account_event(AccountEventKind::Balances(
+                    vec![
+                        // Increased btc by 500 since start
+                        SymbolBalance {
+                            symbol: Symbol::from("btc"),
+                            balance: Balance { total: 1500.0, available: 1500.0 }
+                        },
+                        // Reduced usdt by 500 since start
+                        SymbolBalance {
+                            symbol: Symbol::from("usdt"),
+                            balance: Balance { total: 500.0, available: 500.0 }
+                        }
+                    ]
+                ))));
             };
         });
     }
@@ -275,7 +294,8 @@ mod tests {
             .into_iter()
             .map(|instrument| [instrument.base, instrument.quote])
             .flatten()
-            .map(|symbol| (symbol, Balance { total: 0.0, available: 0.0 }))
+            // Todo: Later we will init Balances during Init, so this would be (0.0, 0.0) until exchange update
+            .map(|symbol| (symbol, Balance { total: 1000.0, available: 1000.0 }))
             .collect();
 
         Account {
