@@ -3,6 +3,7 @@ use super::{
     order::Algorithmic
 };
 use barter_data::model::MarketEvent;
+use tracing::info;
 
 
 pub trait IndicatorUpdater {
@@ -18,7 +19,7 @@ where
     Strategy: IndicatorUpdater,
 {
     pub fn update(mut self, market: MarketEvent) -> Engine<Strategy> {
-        println!("update_from_market: {market:?}");
+        info!(kind = "Market", exchange = ?market.exchange, instrument = %market.instrument, payload = ?market, "received Event");
 
         // Update Positions
         self.accounts.update_positions(&market);
