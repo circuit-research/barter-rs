@@ -22,6 +22,24 @@ impl<Strategy> Cerebrum<OrderGenerator<Algorithmic>, Strategy> {
         // 2. Decide whether to cancel or open orders
         // 3. Action the decisions
 
+        // let order_request = Order {
+        //     exchange: (),
+        //     cid: ClientOrderId(),
+        //     state: ()
+        // };
+        // let order_request_batch = vec![
+        //     Order {
+        //         exchange: (),
+        //         cid: ClientOrderId(),
+        //         state: Request {
+        //             kind: OrderKind::Market,
+        //             side: Side::Buy,
+        //             price: 0.0,
+        //             quantity: 0.0
+        //         }
+        //     }
+        // ];
+
         self.exchange_tx.send(ExchangeCommand::OpenOrder).unwrap();
         Engine::Consumer(Cerebrum::from(self))
     }
