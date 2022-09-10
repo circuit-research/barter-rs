@@ -11,7 +11,8 @@ pub enum AccountEvent {
     OrderNew,
     OrderCancelled,
     Trade,
-    Balances
+    Balances,
+    Disconnected,
 }
 
 pub enum Command {
