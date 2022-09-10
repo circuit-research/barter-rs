@@ -1,8 +1,4 @@
-use crate::cerebrum::{
-    Cerebrum, Engine,
-    consume::Consumer,
-    terminate::Terminated,
-};
+use super::{Cerebrum, Engine, consume::Consumer, terminate::Terminated};
 
 /// Initialiser can transition to one of:
 ///  a) Consumer
@@ -23,11 +19,9 @@ impl From<Cerebrum<Initialiser>> for Cerebrum<Consumer> {
         Self {
             state: Consumer,
             feed: cerebrum.feed,
-            event_tx: cerebrum.event_tx,
-            balances: cerebrum.balances,
-            orders: cerebrum.orders,
-            positions: cerebrum.positions,
+            accounts: cerebrum.accounts,
             strategy: cerebrum.strategy,
+            event_tx: cerebrum.event_tx,
         }
     }
 }
@@ -38,11 +32,9 @@ impl From<Cerebrum<Initialiser>> for Cerebrum<Terminated> {
         Self {
             state: Terminated,
             feed: cerebrum.feed,
-            event_tx: cerebrum.event_tx,
-            balances: cerebrum.balances,
-            orders: cerebrum.orders,
-            positions: cerebrum.positions,
+            accounts: cerebrum.accounts,
             strategy: cerebrum.strategy,
+            event_tx: cerebrum.event_tx,
         }
     }
 }

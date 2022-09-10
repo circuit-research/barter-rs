@@ -44,11 +44,9 @@ impl From<Cerebrum<Commander>> for Cerebrum<Terminated> {
         Self {
             state: Terminated,
             feed: cerebrum.feed,
-            event_tx: cerebrum.event_tx,
-            balances: cerebrum.balances,
-            orders: cerebrum.orders,
-            positions: cerebrum.positions,
+            accounts: cerebrum.accounts,
             strategy: cerebrum.strategy,
+            event_tx: cerebrum.event_tx,
         }
     }
 }
@@ -59,11 +57,9 @@ impl From<(Cerebrum<Commander>, ())> for Cerebrum<OrderGenerator<Manual>> {
         Self {
             state: OrderGenerator { state: Manual { meta }},
             feed: cerebrum.feed,
-            event_tx: cerebrum.event_tx,
-            balances: cerebrum.balances,
-            orders: cerebrum.orders,
-            positions: cerebrum.positions,
+            accounts: cerebrum.accounts,
             strategy: cerebrum.strategy,
+            event_tx: cerebrum.event_tx,
         }
     }
 }

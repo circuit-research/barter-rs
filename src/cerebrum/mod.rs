@@ -34,19 +34,15 @@ mod initialise;
 //     '--> exchange_tx / execution_tx / account_tx (or similar) to send Requests to exchange
 //  - Make input & output feed / tx / rx names more distinct eg/ InputEventFeed, or InputFeed...
 //     ... output_tx / audit_tx / state_tx etc
-
-// Could use something like? Whatever is decided be consistent with casing / verb usage etc.
-pub enum EngineNew {
-    Initialise(Cerebrum<Initialiser>),
-    Consume(Cerebrum<Consumer>),
-    UpdateMarket(Cerebrum<MarketUpdater>),
-    UpdateAccount(Cerebrum<AccountUpdater>),
-    GenerateOrderAlgorithmic(Cerebrum<OrderGenerator<Algorithmic>>),
-    GenerateOrderManual(Cerebrum<OrderGenerator<Manual>>),
-    ActionCommand(Cerebrum<Commander>),
-    TerminateCerebrum<Terminated>),
-}
-
+//  - EngineState naming to be decided, but be consistent with casing / verb usage etc.
+//  - Consumer state can likely transition to Initialiser while we wait for responses from exchange?
+//  - Feed needs some work to be more like MarketFeed w/ Feed struct? etc.
+//  - Account or Portfolio? Change name of AccountUpdater and AccountEvent if we do change, etc.
+//  - Should the Strategy have control over 'Account'?
+//  - Will we add a new
+//  - Engine will also have control of spawning the execution clients, presumably...?
+//   '--> Perhaps Engine will need to be a struct and enum Engine -> CerebrumState/TradingState/Trader
+//   '--> Perhaps the builder could do the Init of Cerebrum in a blocking way
 
 pub enum Engine {
     Initialiser(Cerebrum<Initialiser>),
@@ -62,11 +58,15 @@ pub enum Engine {
 pub struct Cerebrum<State> {
     pub state: State,
     pub feed: EventFeed,
-    pub event_tx: (),
-    pub balances: (),
-    pub orders: (),
-    pub positions: (),
+    pub accounts: Accounts,
     pub strategy: (),
+    pub event_tx: (),
+}
+
+pub struct Accounts {
+    balances: (),
+    positions: (),
+    orders: (),
 }
 
 impl Engine {
@@ -120,11 +120,9 @@ impl Engine {
 #[derive(Default)]
 pub struct EngineBuilder {
     pub feed: Option<EventFeed>,
-    pub event_tx: Option<()>,
-    pub balances: Option<()>,
-    pub orders: Option<()>,
-    pub positions: Option<()>,
+    pub accounts: Option<Accounts>,
     pub strategy: Option<()>,
+    pub event_tx: Option<()>,
 }
 
 impl EngineBuilder {
@@ -139,30 +137,9 @@ impl EngineBuilder {
         }
     }
 
-    pub fn event_tx(self, value: ()) -> Self {
+    pub fn accounts(self, value: Accounts) -> Self {
         Self {
-            event_tx: Some(value),
-            ..self
-        }
-    }
-
-    pub fn balances(self, value: ()) -> Self {
-        Self {
-            balances: Some(value),
-            ..self
-        }
-    }
-
-    pub fn orders(self, value: ()) -> Self {
-        Self {
-            orders: Some(value),
-            ..self
-        }
-    }
-
-    pub fn positions(self, value: ()) -> Self {
-        Self {
-            positions: Some(value),
+            accounts: Some(value),
             ..self
         }
     }
@@ -174,15 +151,20 @@ impl EngineBuilder {
         }
     }
 
+    pub fn event_tx(self, value: ()) -> Self {
+        Self {
+            event_tx: Some(value),
+            ..self
+        }
+    }
+
     pub fn build(self) -> Result<Engine, EngineError> {
         Ok(Engine::Initialiser(Cerebrum {
             state: Initialiser,
             feed: self.feed.ok_or(EngineError::BuilderIncomplete("engine_id"))?,
+            accounts: self.accounts.ok_or(EngineError::BuilderIncomplete("account"))?,
+            strategy: self.strategy.ok_or(EngineError::BuilderIncomplete("strategy"))?,
             event_tx: self.event_tx.ok_or(EngineError::BuilderIncomplete("event_tx"))?,
-            balances: self.balances.ok_or(EngineError::BuilderIncomplete("balances"))?,
-            orders: self.orders.ok_or(EngineError::BuilderIncomplete("orders"))?,
-            positions: self.positions.ok_or(EngineError::BuilderIncomplete("positions"))?,
-            strategy: self.strategy.ok_or(EngineError::BuilderIncomplete("strategy"))?
         }))
     }
 }
@@ -196,7 +178,6 @@ mod tests {
     use tokio::sync::mpsc;
     use crate::cerebrum::event::{Command, Event};
     use crate::data::live::MarketFeed;
-    use crate::data::MarketGenerator;
     use super::*;
 
     async fn market_feed(event_tx: mpsc::UnboundedSender<Event>) {
@@ -235,10 +216,14 @@ mod tests {
         // Spawn MarketFeed on separate thread
         market_feed(event_tx.clone()).await;
 
+        // Accounts
+        let accounts = Accounts { balances: (), positions: (), orders: ()};
 
         let mut engine = Engine::builder()
             .feed(feed)
-            .event_tx(()).balances(()).orders(()).positions(()).strategy(())
+            .event_tx(())
+            .accounts(accounts)
+            .strategy(())
             .build()
             .unwrap();
 
@@ -247,12 +232,12 @@ mod tests {
         });
 
         tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(2)).await;
+            tokio::time::sleep(Duration::from_secs(5)).await;
             event_tx.send(Event::Command(Command::Terminate));
         }).await;
 
 
-        tokio::time::sleep(Duration::from_secs(5)).await
+        tokio::time::sleep(Duration::from_secs(6)).await
     }
 
 }
