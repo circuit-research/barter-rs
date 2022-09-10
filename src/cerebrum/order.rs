@@ -1,3 +1,4 @@
+use crate::cerebrum::exchange::ExchangeCommand;
 use super::{
     Engine, Cerebrum,
     consume::Consumer,
@@ -18,6 +19,11 @@ impl<Strategy> Cerebrum<OrderGenerator<Algorithmic>, Strategy> {
         // 1. Analyse open Positions, Orders, Statistics, Indicators
         // 2. Decide whether to cancel or open orders
         // 3. Action the decisions
+
+
+
+        self.exchange_tx.send(ExchangeCommand::OpenOrder).unwrap();
+
         Engine::Consumer(Cerebrum::from(self))
     }
 }
@@ -25,9 +31,7 @@ impl<Strategy> Cerebrum<OrderGenerator<Algorithmic>, Strategy> {
 impl<Strategy> Cerebrum<OrderGenerator<Manual>, Strategy> {
     pub fn generate_order_manual(mut self) -> Engine<Strategy> {
         // Todo:
-        // 1. Analyse open Positions, Orders, Statistics, Indicators
-        // 2. Decide whether to cancel or open orders
-        // 3. Action the decisions
+        // 1. Action manual open / close order
         Engine::Consumer(Cerebrum::from(self))
     }
 }
@@ -41,7 +45,7 @@ impl<State, Strategy> From<Cerebrum<OrderGenerator<State>, Strategy>> for Cerebr
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
-            event_tx: cerebrum.event_tx,
+            audit_tx: cerebrum.audit_tx,
         }
     }
 }
