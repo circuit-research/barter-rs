@@ -1,3 +1,4 @@
+use tracing::info;
 use crate::cerebrum::{Cerebrum, Engine};
 use crate::cerebrum::event::Command;
 use crate::cerebrum::order::{Manual, OrderGenerator};
@@ -15,24 +16,24 @@ impl<Strategy> Cerebrum<Commander, Strategy> {
         // Action Command
         match self.state.command {
             Command::Terminate => {
+                info!(kind = "Command", payload = "Terminate", "received Event");
                 // Todo: Do pre-termination tasks
-                println!("Received Command::Terminate");
                 Engine::Terminated(Cerebrum::from(self))
             }
             Command::FetchOpenPositions => {
-                // Todo: Send data to event_tx
-                println!("Received Command::FetchOpenPositions");
+                info!(kind = "Command", payload = "FetchOpenPositions", "received Event");
+                // Todo: Send data to audit_tx
                 Engine::Terminated(Cerebrum::from(self))
             }
             Command::ExitPosition => {
+                info!(kind = "Command", payload = "ExitPosition", "received Event");
                 // Todo: Add relevant metadata for the Position to exit
-                println!("Received Command::ExitPosition");
-                Engine::OrderGeneratorManual(Cerebrum::from((self, ())))
+                Engine::OrderGeneratorManual((Cerebrum::from(self), ()))
             }
             Command::ExitAllPositions => {
+                info!(kind = "Command", payload = "ExitAllPositions", "received Event");
                 // Todo: Add relevant metadata for the Position to exit
-                println!("Received Command::ExitAllPositions");
-                Engine::OrderGeneratorManual(Cerebrum::from((self, ())))
+                Engine::OrderGeneratorManual((Cerebrum::from(self), ()))
             }
         }
     }
@@ -53,10 +54,10 @@ impl<Strategy> From<Cerebrum<Commander, Strategy>> for Cerebrum<Terminated, Stra
 }
 
 /// b) Commander -> OrderGenerator<Manual>
-impl<Strategy> From<(Cerebrum<Commander, Strategy>, ())> for Cerebrum<OrderGenerator<Manual>, Strategy> {
-    fn from((cerebrum, meta): (Cerebrum<Commander, Strategy>, ())) -> Self {
+impl<Strategy> From<Cerebrum<Commander, Strategy>> for Cerebrum<OrderGenerator<Manual>, Strategy> {
+    fn from(cerebrum: Cerebrum<Commander, Strategy>) -> Self {
         Self {
-            state: OrderGenerator { state: Manual { meta }},
+            state: OrderGenerator { state: Manual },
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
             exchange_tx: cerebrum.exchange_tx,
