@@ -13,8 +13,8 @@ use barter_data::model::MarketEvent;
 ///  c) Commander
 pub struct Consumer;
 
-impl Cerebrum<Consumer> {
-    pub fn next_event(mut self) -> Engine {
+impl<Strategy> Cerebrum<Consumer, Strategy> {
+    pub fn next_event(mut self) -> Engine<Strategy> {
         // Consume next Event
         match self.feed.next() {
             Event::Market(market) => {
@@ -31,8 +31,8 @@ impl Cerebrum<Consumer> {
 }
 
 /// a) Consumer -> MarketUpdater
-impl From<(Cerebrum<Consumer>, MarketEvent)> for Cerebrum<MarketUpdater> {
-    fn from((cerebrum, market): (Cerebrum<Consumer>, MarketEvent)) -> Self {
+impl<Strategy> From<(Cerebrum<Consumer, Strategy>, MarketEvent)> for Cerebrum<MarketUpdater, Strategy> {
+    fn from((cerebrum, market): (Cerebrum<Consumer, Strategy>, MarketEvent)) -> Self {
         Self {
             state: MarketUpdater { market },
             feed: cerebrum.feed,
@@ -45,8 +45,8 @@ impl From<(Cerebrum<Consumer>, MarketEvent)> for Cerebrum<MarketUpdater> {
 }
 
 /// b) Consumer -> AccountUpdater
-impl From<(Cerebrum<Consumer>, AccountEvent)> for Cerebrum<AccountUpdater> {
-    fn from((cerebrum, account): (Cerebrum<Consumer>, AccountEvent)) -> Self {
+impl<Strategy> From<(Cerebrum<Consumer, Strategy>, AccountEvent)> for Cerebrum<AccountUpdater, Strategy> {
+    fn from((cerebrum, account): (Cerebrum<Consumer, Strategy>, AccountEvent)) -> Self {
         Self {
             state: AccountUpdater { account },
             feed: cerebrum.feed,
@@ -59,8 +59,8 @@ impl From<(Cerebrum<Consumer>, AccountEvent)> for Cerebrum<AccountUpdater> {
 }
 
 /// c) Consumer -> Commander
-impl From<(Cerebrum<Consumer>, Command)> for Cerebrum<Commander> {
-    fn from((cerebrum, command): (Cerebrum<Consumer>, Command)) -> Self {
+impl<Strategy> From<(Cerebrum<Consumer, Strategy>, Command)> for Cerebrum<Commander, Strategy> {
+    fn from((cerebrum, command): (Cerebrum<Consumer, Strategy>, Command)) -> Self {
         Self {
             state: Commander { command },
             feed: cerebrum.feed,

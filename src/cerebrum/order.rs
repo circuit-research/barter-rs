@@ -12,8 +12,8 @@ pub struct OrderGenerator<State> {
 pub struct Algorithmic;
 pub struct Manual { pub meta: () }
 
-impl Cerebrum<OrderGenerator<Algorithmic>> {
-    pub fn generate_order(mut self) -> Engine {
+impl<Strategy> Cerebrum<OrderGenerator<Algorithmic>, Strategy> {
+    pub fn generate_order(mut self) -> Engine<Strategy> {
         // Todo:
         // 1. Analyse open Positions, Orders, Statistics, Indicators
         // 2. Decide whether to cancel or open orders
@@ -22,8 +22,8 @@ impl Cerebrum<OrderGenerator<Algorithmic>> {
     }
 }
 
-impl Cerebrum<OrderGenerator<Manual>> {
-    pub fn generate_order_manual(mut self) -> Engine {
+impl<Strategy> Cerebrum<OrderGenerator<Manual>, Strategy> {
+    pub fn generate_order_manual(mut self) -> Engine<Strategy> {
         // Todo:
         // 1. Analyse open Positions, Orders, Statistics, Indicators
         // 2. Decide whether to cancel or open orders
@@ -33,8 +33,8 @@ impl Cerebrum<OrderGenerator<Manual>> {
 }
 
 /// a) OrderGenerator -> Consumer
-impl<State> From<Cerebrum<OrderGenerator<State>>> for Cerebrum<Consumer> {
-    fn from(cerebrum: Cerebrum<OrderGenerator<State>>) -> Self {
+impl<State, Strategy> From<Cerebrum<OrderGenerator<State>, Strategy>> for Cerebrum<Consumer, Strategy> {
+    fn from(cerebrum: Cerebrum<OrderGenerator<State>, Strategy>) -> Self {
         Self {
             state: Consumer,
             feed: cerebrum.feed,

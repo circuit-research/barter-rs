@@ -10,8 +10,8 @@ pub struct AccountUpdater {
     pub account: AccountEvent,
 }
 
-impl Cerebrum<AccountUpdater> {
-    pub fn update_from_account_event(mut self) -> Engine {
+impl<Strategy> Cerebrum<AccountUpdater, Strategy> {
+    pub fn update_from_account_event(mut self) -> Engine<Strategy> {
         // Update Positions, Statistics, Indicators
         match self.state.account {
             AccountEvent::OrderNew => {
@@ -41,8 +41,8 @@ impl Cerebrum<AccountUpdater> {
 }
 
 /// a) AccountUpdater -> Consumer
-impl From<Cerebrum<AccountUpdater>> for Cerebrum<Consumer> {
-    fn from(cerebrum: Cerebrum<AccountUpdater>) -> Self {
+impl<Strategy> From<Cerebrum<AccountUpdater, Strategy>> for Cerebrum<Consumer, Strategy> {
+    fn from(cerebrum: Cerebrum<AccountUpdater, Strategy>) -> Self {
         Self {
             state: Consumer,
             feed: cerebrum.feed,

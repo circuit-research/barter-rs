@@ -46,24 +46,25 @@ mod exchange;
 //  - Engine will also have control of spawning the execution clients, presumably...?
 //   '--> Perhaps Engine will need to be a struct and enum Engine -> CerebrumState/TradingState/Trader
 //   '--> Perhaps the builder could do the Init of Cerebrum in a blocking way
+//  - Strategy could use Associated types?
 
-pub enum Engine {
-    Initialiser(Cerebrum<Initialiser>),
-    Consumer(Cerebrum<Consumer>),
-    MarketUpdater(Cerebrum<MarketUpdater>),
-    OrderGeneratorAlgorithmic(Cerebrum<OrderGenerator<Algorithmic>>),
-    OrderGeneratorManual(Cerebrum<OrderGenerator<Manual>>),
-    AccountUpdater(Cerebrum<AccountUpdater>),
-    Commander(Cerebrum<Commander>),
-    Terminated(Cerebrum<Terminated>),
+pub enum Engine<Strategy> {
+    Initialiser(Cerebrum<Initialiser, Strategy>),
+    Consumer(Cerebrum<Consumer, Strategy>),
+    MarketUpdater(Cerebrum<MarketUpdater, Strategy>),
+    OrderGeneratorAlgorithmic(Cerebrum<OrderGenerator<Algorithmic>, Strategy>),
+    OrderGeneratorManual(Cerebrum<OrderGenerator<Manual>, Strategy>),
+    AccountUpdater(Cerebrum<AccountUpdater, Strategy>),
+    Commander(Cerebrum<Commander, Strategy>),
+    Terminated(Cerebrum<Terminated, Strategy>),
 }
 
-pub struct Cerebrum<State> {
+pub struct Cerebrum<State, Strategy> {
     pub state: State,
     pub feed: EventFeed,
     pub accounts: Accounts,
     pub exchange_tx: mpsc::UnboundedSender<ExchangeCommand>,
-    pub strategy: (),
+    pub strategy: Strategy,
     pub event_tx: (),
 }
 
@@ -85,8 +86,8 @@ pub struct Orders {
 
 pub struct ClientOrderId(pub Uuid);
 
-impl Engine {
-    pub fn builder() -> EngineBuilder {
+impl<Strategy> Engine<Strategy> {
+    pub fn builder() -> EngineBuilder<Strategy> {
         EngineBuilder::new()
     }
 
@@ -134,17 +135,23 @@ impl Engine {
 
 /// Builder to construct [`Engine`] instances.
 #[derive(Default)]
-pub struct EngineBuilder {
+pub struct EngineBuilder<Strategy> {
     pub feed: Option<EventFeed>,
     pub accounts: Option<Accounts>,
     pub exchange_tx: Option<mpsc::UnboundedSender<ExchangeCommand>>,
-    pub strategy: Option<()>,
+    pub strategy: Option<Strategy>,
     pub event_tx: Option<()>,
 }
 
-impl EngineBuilder {
+impl<Strategy> EngineBuilder<Strategy> {
     fn new() -> Self {
-        Self::default()
+        Self {
+            feed: None,
+            accounts: None,
+            exchange_tx: None,
+            strategy: None,
+            event_tx: None
+        }
     }
 
     pub fn feed(self, value: EventFeed) -> Self {
@@ -168,7 +175,7 @@ impl EngineBuilder {
         }
     }
 
-    pub fn strategy(self, value: ()) -> Self {
+    pub fn strategy(self, value: Strategy) -> Self {
         Self {
             strategy: Some(value),
             ..self
@@ -182,7 +189,7 @@ impl EngineBuilder {
         }
     }
 
-    pub fn build(self) -> Result<Engine, EngineError> {
+    pub fn build(self) -> Result<Engine<Strategy>, EngineError> {
         Ok(Engine::Initialiser(Cerebrum {
             state: Initialiser,
             feed: self.feed.ok_or(EngineError::BuilderIncomplete("engine_id"))?,
