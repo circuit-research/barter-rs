@@ -4,31 +4,38 @@ use super::{
 };
 use barter_data::model::{DataKind, MarketEvent};
 
+
+pub trait IndicatorUpdater {
+    fn update(&mut self, market: MarketEvent);
+}
+
 /// MarketUpdater can transition to:
 ///  a) OrderGenerator<Algorithmic>
 pub struct MarketUpdater {
     pub market: MarketEvent
 }
 
-impl<Strategy> Cerebrum<MarketUpdater, Strategy> {
+impl<Strategy> Cerebrum<MarketUpdater, Strategy>
+where
+    Strategy: IndicatorUpdater,
+{
     pub fn update_from_market_event(mut self) -> Engine<Strategy> {
-        // Update Positions, Statistics, Indicators
-        match &self.state.market.kind {
-            DataKind::Trade(trade) => {
-                println!("Update from market: {trade:?}");
-            }
-            DataKind::Candle(candle) => {
-                println!("Update from market: {candle:?}");
-            }
-        };
-
         Engine::OrderGeneratorAlgorithmic(Cerebrum::from(self))
     }
 }
 
 /// a) MarketUpdater -> OrderGenerator<Algorithmic>
-impl<Strategy> From<Cerebrum<MarketUpdater, Strategy>> for Cerebrum<OrderGenerator<Algorithmic>, Strategy> {
-    fn from(cerebrum: Cerebrum<MarketUpdater, Strategy>) -> Self {
+impl<Strategy> From<Cerebrum<MarketUpdater, Strategy>> for Cerebrum<OrderGenerator<Algorithmic>, Strategy>
+where
+    Strategy: IndicatorUpdater
+{
+    fn from(mut cerebrum: Cerebrum<MarketUpdater, Strategy>) -> Self {
+        // Destructure to access owned MarketUpdater State
+        let Cerebrum { state, .. } = cerebrum;
+
+        // Update Indicators
+        cerebrum.strategy.update(state.market);
+
         Self {
             state: OrderGenerator { state: Algorithmic },
             feed: cerebrum.feed,
