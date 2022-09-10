@@ -5,8 +5,8 @@ use super::{Cerebrum, Engine, consume::Consumer, terminate::Terminated};
 ///  b) Terminated
 pub struct Initialiser;
 
-impl Cerebrum<Initialiser> {
-    pub fn init(mut self) -> Engine {
+impl<Strategy> Cerebrum<Initialiser, Strategy> {
+    pub fn init(mut self) -> Engine<Strategy> {
         // Todo: Hit ExchangeClient to get balances, orders, positions (may fail)
         // Todo: Add failure transition to Engine::Terminated if it's unrecoverable
         Engine::Consumer(Cerebrum::from(self))
@@ -14,8 +14,8 @@ impl Cerebrum<Initialiser> {
 }
 
 /// a) Initialiser -> Consumer
-impl From<Cerebrum<Initialiser>> for Cerebrum<Consumer> {
-    fn from(cerebrum: Cerebrum<Initialiser>) -> Self {
+impl<Strategy> From<Cerebrum<Initialiser, Strategy>> for Cerebrum<Consumer, Strategy> {
+    fn from(cerebrum: Cerebrum<Initialiser, Strategy>) -> Self {
         Self {
             state: Consumer,
             feed: cerebrum.feed,
@@ -28,8 +28,8 @@ impl From<Cerebrum<Initialiser>> for Cerebrum<Consumer> {
 }
 
 /// b) Initialiser -> Terminated
-impl From<Cerebrum<Initialiser>> for Cerebrum<Terminated> {
-    fn from(cerebrum: Cerebrum<Initialiser>) -> Self {
+impl<Strategy> From<Cerebrum<Initialiser, Strategy>> for Cerebrum<Terminated, Strategy> {
+    fn from(cerebrum: Cerebrum<Initialiser, Strategy>) -> Self {
         Self {
             state: Terminated,
             feed: cerebrum.feed,

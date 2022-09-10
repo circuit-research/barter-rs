@@ -10,8 +10,8 @@ pub struct MarketUpdater {
     pub market: MarketEvent
 }
 
-impl Cerebrum<MarketUpdater> {
-    pub fn update_from_market_event(mut self) -> Engine {
+impl<Strategy> Cerebrum<MarketUpdater, Strategy> {
+    pub fn update_from_market_event(mut self) -> Engine<Strategy> {
         // Update Positions, Statistics, Indicators
         match &self.state.market.kind {
             DataKind::Trade(trade) => {
@@ -27,8 +27,8 @@ impl Cerebrum<MarketUpdater> {
 }
 
 /// a) MarketUpdater -> OrderGenerator<Algorithmic>
-impl From<Cerebrum<MarketUpdater>> for Cerebrum<OrderGenerator<Algorithmic>> {
-    fn from(cerebrum: Cerebrum<MarketUpdater>) -> Self {
+impl<Strategy> From<Cerebrum<MarketUpdater, Strategy>> for Cerebrum<OrderGenerator<Algorithmic>, Strategy> {
+    fn from(cerebrum: Cerebrum<MarketUpdater, Strategy>) -> Self {
         Self {
             state: OrderGenerator { state: Algorithmic },
             feed: cerebrum.feed,
