@@ -1,9 +1,10 @@
-use super::{Balance, ClientOrderId, event::ConnectionStatus};
+use super::event::ConnectionStatus;
 use barter_integration::model::Instrument;
 use std::{
-    time::Duration,
-    collections::HashMap
+    collections::HashMap,
+    time::Duration
 };
+use crate::cerebrum::account::{Balance, ClientOrderId};
 
 // Todo: May need to have an synchronous interface prior to async for eg/ GenerateClientOrderId
 pub enum ExchangeCommand {

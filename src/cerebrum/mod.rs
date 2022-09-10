@@ -14,6 +14,8 @@ use self::{
 use crate::engine::error::EngineError;
 use tokio::sync::mpsc;
 use uuid::Uuid;
+use account::Accounts;
+use crate::cerebrum::market::IndicatorUpdater;
 
 
 mod consume;
@@ -47,6 +49,11 @@ mod exchange;
 //   '--> Perhaps Engine will need to be a struct and enum Engine -> CerebrumState/TradingState/Trader
 //   '--> Perhaps the builder could do the Init of Cerebrum in a blocking way
 //  - Strategy could use Associated types?
+//  - Do I want Accounts to have Positions? Also MarketUpdater would call self.accounts.update_positions()
+//   '--> is it relevant now we hold every Instrument?
+//   '--> How to track PnL? What is a Position?
+//  - AccountUpdater no longer updates Positions & Statistics, but just Indicators -> this may change back?
+//   '--> If we only update Indicators, would this become SignalUpdater?
 
 pub enum Engine<Strategy> {
     Initialiser(Cerebrum<Initialiser, Strategy>),
@@ -68,25 +75,10 @@ pub struct Cerebrum<State, Strategy> {
     pub event_tx: (),
 }
 
-pub struct Accounts {
-    balances: HashMap<Market, Balance>,
-    positions: HashMap<Market, ()>,
-    orders: Orders,
-}
-
-pub struct Balance {
-    total: f64,
-    available: f64,
-}
-
-pub struct Orders {
-    pub in_flight: HashMap<ClientOrderId, ()>,
-    pub open: HashMap<ClientOrderId, ()>,
-}
-
-pub struct ClientOrderId(pub Uuid);
-
-impl<Strategy> Engine<Strategy> {
+impl<Strategy> Engine<Strategy>
+where
+    Strategy: IndicatorUpdater,
+{
     pub fn builder() -> EngineBuilder<Strategy> {
         EngineBuilder::new()
     }
@@ -205,9 +197,10 @@ impl<Strategy> EngineBuilder<Strategy> {
 mod tests {
     use std::time::Duration;
     use barter_data::ExchangeId;
-    use barter_data::model::SubKind;
+    use barter_data::model::{MarketEvent, SubKind};
     use barter_integration::model::InstrumentKind;
     use tokio::sync::mpsc;
+    use crate::cerebrum::account::Orders;
     use crate::cerebrum::event::{AccountEvent, Command, Event};
     use crate::data::live::MarketFeed;
     use super::*;
@@ -261,7 +254,6 @@ mod tests {
         // Accounts
         let accounts = Accounts {
             balances: HashMap::new(),
-            positions: HashMap::new(),
             orders: Orders { in_flight: HashMap::new(), open: HashMap::new() }
         };
 
@@ -271,12 +263,22 @@ mod tests {
         // Spawn STUBBED AccountFEed on separate thread
         account_feed(event_tx.clone()).await;
 
+        // Strategy
+        struct StubbedStrategy;
+        let strategy = StubbedStrategy;
+
+        impl IndicatorUpdater for StubbedStrategy {
+            fn update(&mut self, market: MarketEvent) {
+                println!("update indicators from market: {market:?}");
+            }
+        }
+
         let mut engine = Engine::builder()
             .feed(feed)
             .event_tx(())
             .accounts(accounts)
             .exchange_tx(exchange_tx)
-            .strategy(())
+            .strategy(StubbedStrategy)
             .build()
             .unwrap();
 

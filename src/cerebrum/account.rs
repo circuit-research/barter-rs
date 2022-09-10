@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+use barter_integration::model::{Market, Side};
+use uuid::Uuid;
 use super::{
-    Engine, Cerebrum,
+    Cerebrum, consume::Consumer,
+    Engine,
     event::AccountEvent,
-    consume::Consumer,
 };
 
 /// AccountUpdater can transition to:
@@ -40,6 +43,7 @@ impl<Strategy> Cerebrum<AccountUpdater, Strategy> {
     }
 }
 
+
 /// a) AccountUpdater -> Consumer
 impl<Strategy> From<Cerebrum<AccountUpdater, Strategy>> for Cerebrum<Consumer, Strategy> {
     fn from(cerebrum: Cerebrum<AccountUpdater, Strategy>) -> Self {
@@ -52,4 +56,25 @@ impl<Strategy> From<Cerebrum<AccountUpdater, Strategy>> for Cerebrum<Consumer, S
             event_tx: cerebrum.event_tx,
         }
     }
+}
+
+pub struct Accounts {
+    pub balances: HashMap<Market, Balance>,
+    pub orders: Orders,
+}
+
+pub struct Balance {
+    pub total: f64,
+    pub available: f64,
+}
+
+pub struct Orders {
+    pub in_flight: HashMap<ClientOrderId, ()>,
+    pub open: HashMap<ClientOrderId, ()>,
+}
+
+pub struct ClientOrderId(pub Uuid);
+
+impl Accounts {
+
 }
