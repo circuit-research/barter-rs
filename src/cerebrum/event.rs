@@ -1,5 +1,6 @@
+use super::order::{Cancelled, Open, Order};
 use barter_data::model::MarketEvent;
-use barter_integration::model::{Exchange, Symbol};
+use barter_integration::model::{Exchange, Instrument, Side, Symbol};
 use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
 
@@ -20,12 +21,12 @@ pub struct AccountEvent {
 
 #[derive(Debug)]
 pub enum AccountEventKind {
-    OrderNew,
-    OrderCancelled,
-    Trade,
+    ConnectionStatus(ConnectionStatus),
     Balance(SymbolBalance),
     Balances(Vec<SymbolBalance>),
-    ConnectionStatus(ConnectionStatus),
+    OrderNew(Order<Open>),
+    OrderCancelled(Order<Cancelled>),
+    Trade(Trade),
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -62,6 +63,19 @@ impl EventFeed {
         }
     }
 }
+
+#[derive(Debug)]
+pub struct Trade {
+    pub id: TradeId,
+    pub order_id: String,
+    pub instrument: Instrument,
+    pub side: Side,
+    pub price: f64,
+    pub amount: f64,
+}
+
+#[derive(Debug)]
+pub struct TradeId(pub String);
 
 #[derive(Debug)]
 pub struct SymbolBalance {

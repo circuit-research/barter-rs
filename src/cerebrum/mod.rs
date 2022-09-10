@@ -63,13 +63,24 @@ mod exchange;
 //       '--> Engine / Cerebrum should start up with a bunch of Markets (however we are using exchange + symbol)
 //  - More efficient to use Accounts(Vec<(Exchange, Account)) (or have Exchange inside Account?
 //    '--> Benchmark, but probably faster for since people won't use many exchanges at once?
+//  - Work out how to do fees for trade, and add Liquidity field?
+//  - Impl display for MarketEvent, AccountEvent, Command
+//  - Add abstractions later, eg/ AccountManager, OrderManager
+//  - What happens if we get a Order<Cancelled> through whilst it's InFlight?
+//  - Could make Account generic to give it functionality to generate appropriate Cid?
+//  - Document that fact that when I update_orders_from_cancel that I'm expecting a AccountBalance to come
+//    through from Exchange, rather than calculate that myself.
+//  - Ensure I am happy with log levels after dev. eg/ update_order_from_cancel logs at worn if we
+//    cancel in flight order
+//  - self.accounts.update_orders_from_open(&order); is taking ref & cloning - only makes sense if
+//    we are using audit_tx... double check this later
 
 pub enum Engine<Strategy> {
     Initialiser(Cerebrum<Initialiser, Strategy>),
     Consumer(Cerebrum<Consumer, Strategy>),
     MarketUpdater((Cerebrum<MarketUpdater, Strategy>, MarketEvent)),
     OrderGeneratorAlgorithmic(Cerebrum<OrderGenerator<Algorithmic>, Strategy>),
-    OrderGeneratorManual(Cerebrum<OrderGenerator<Manual>, Strategy>),
+    OrderGeneratorManual((Cerebrum<OrderGenerator<Manual>, Strategy>, ())),
     AccountUpdater((Cerebrum<AccountUpdater, Strategy>, AccountEvent)),
     Commander(Cerebrum<Commander, Strategy>),
     Terminated(Cerebrum<Terminated, Strategy>),
@@ -118,8 +129,8 @@ where
             Self::OrderGeneratorAlgorithmic(cerebrum) => {
                 cerebrum.generate_order()
             }
-            Self::OrderGeneratorManual(cerebrum) => {
-                cerebrum.generate_order_manual()
+            Self::OrderGeneratorManual((cerebrum, meta)) => {
+                cerebrum.generate_order_manual(meta)
             },
             Self::AccountUpdater((cerebrum, account)) => {
                 cerebrum.update(account)
@@ -210,7 +221,7 @@ mod tests {
     use barter_data::model::{MarketEvent, SubKind};
     use barter_integration::model::{Exchange, Instrument, InstrumentKind, Market, Symbol};
     use tokio::sync::mpsc;
-    use crate::cerebrum::account::{Account, Orders, Position};
+    use crate::cerebrum::account::{Account, Position};
     use crate::cerebrum::event::{AccountEvent, AccountEventKind, Balance, Command, Event, SymbolBalance};
     use crate::data::live::MarketFeed;
     use super::*;
@@ -301,12 +312,15 @@ mod tests {
         Account {
             balances,
             positions,
-            orders: Orders { in_flight: HashMap::new(), open: HashMap::new() }
+            orders_in_flight: HashMap::new(),
+            orders_open: HashMap::new()
         }
     }
 
     #[tokio::test]
     async fn it_works() {
+        init_logging();
+
         // Markets
         let exchange = Exchange::from(ExchangeId::Ftx);
         let markets = vec![
@@ -368,6 +382,19 @@ mod tests {
 
 
         tokio::time::sleep(Duration::from_secs(32)).await
+    }
+
+    /// Initialise a `Subscriber` for `Tracing` Json logs and install it as the global default.
+    fn init_logging() {
+        tracing_subscriber::fmt()
+            // Filter messages based on the `RUST_LOG` environment variable
+            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+            // Disable colours on release builds
+            .with_ansi(cfg!(debug_assertions))
+            // Enable Json formatting
+            .json()
+            // Install this Tracing subscriber as global default
+            .init()
     }
 
 }

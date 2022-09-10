@@ -1,3 +1,5 @@
+use barter_integration::model::{Exchange, Side};
+use crate::cerebrum::account::ClientOrderId;
 use crate::cerebrum::exchange::ExchangeCommand;
 use super::{
     Engine, Cerebrum,
@@ -11,7 +13,7 @@ pub struct OrderGenerator<State> {
 }
 
 pub struct Algorithmic;
-pub struct Manual { pub meta: () }
+pub struct Manual;
 
 impl<Strategy> Cerebrum<OrderGenerator<Algorithmic>, Strategy> {
     pub fn generate_order(mut self) -> Engine<Strategy> {
@@ -20,18 +22,17 @@ impl<Strategy> Cerebrum<OrderGenerator<Algorithmic>, Strategy> {
         // 2. Decide whether to cancel or open orders
         // 3. Action the decisions
 
-
-
         self.exchange_tx.send(ExchangeCommand::OpenOrder).unwrap();
-
         Engine::Consumer(Cerebrum::from(self))
     }
 }
 
 impl<Strategy> Cerebrum<OrderGenerator<Manual>, Strategy> {
-    pub fn generate_order_manual(mut self) -> Engine<Strategy> {
+    pub fn generate_order_manual(mut self, meta: ()) -> Engine<Strategy> {
         // Todo:
         // 1. Action manual open / close order
+
+        self.exchange_tx.send(ExchangeCommand::OpenOrder).unwrap();
         Engine::Consumer(Cerebrum::from(self))
     }
 }
@@ -48,4 +49,41 @@ impl<State, Strategy> From<Cerebrum<OrderGenerator<State>, Strategy>> for Cerebr
             audit_tx: cerebrum.audit_tx,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub struct Order<State> {
+    pub exchange: Exchange,
+    pub cid: ClientOrderId,
+    pub state: State,
+}
+
+#[derive(Clone, Debug)]
+pub struct Request {
+    pub kind: OrderKind,
+    pub side: Side,
+    pub price: f64,
+    pub quantity: f64,
+}
+
+#[derive(Clone, Debug)]
+pub struct InFlight;
+
+#[derive(Clone, Debug)]
+pub struct Open {
+    pub direction: Side,
+    pub price: f64,
+    pub quantity: f64,
+    pub filled_quantity: f64,
+}
+
+#[derive(Clone, Debug)]
+pub struct Cancelled;
+
+#[derive(Clone, Copy, Debug)]
+pub enum OrderKind {
+    Market,
+    Limit,
+    PostOnly,
+    ImmediateOrCancel
 }
