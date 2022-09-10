@@ -24,15 +24,15 @@ impl Cerebrum<AccountUpdater> {
             }
             AccountEvent::Trade => {
                 // Todo:
-                println!("update_from_account: :Trade");
+                println!("update_from_account: Trade");
             }
             AccountEvent::Balances => {
                 // Todo:
                 println!("update_from_account: Balances");
             }
-            AccountEvent::Disconnected => {
+            AccountEvent::ConnectionStatus(status) => {
                 // Todo:
-                println!("update_from_account: Disconnected");
+                println!("update_from_account: {status:?}");
             }
         };
 

@@ -1,18 +1,19 @@
+use std::collections::HashMap;
+use barter_integration::model::Market;
 use self::{
-    event::EventFeed,
-    initialise::Initialiser,
-    market::MarketUpdater,
     account::AccountUpdater,
     command::Commander,
     consume::Consumer,
+    event::EventFeed,
     exchange::ExchangeCommand,
-    terminate::Terminated,
+    initialise::Initialiser,
+    market::MarketUpdater,
     order::{Algorithmic, Manual, OrderGenerator},
+    terminate::Terminated,
 };
-use crate::{
-    engine::error::EngineError,
-};
+use crate::engine::error::EngineError;
 use tokio::sync::mpsc;
+use uuid::Uuid;
 
 
 mod consume;
@@ -67,10 +68,22 @@ pub struct Cerebrum<State> {
 }
 
 pub struct Accounts {
-    balances: (),
-    positions: (),
-    orders: (),
+    balances: HashMap<Market, Balance>,
+    positions: HashMap<Market, ()>,
+    orders: Orders,
 }
+
+pub struct Balance {
+    total: f64,
+    available: f64,
+}
+
+pub struct Orders {
+    pub in_flight: HashMap<ClientOrderId, ()>,
+    pub open: HashMap<ClientOrderId, ()>,
+}
+
+pub struct ClientOrderId(pub Uuid);
 
 impl Engine {
     pub fn builder() -> EngineBuilder {
@@ -239,7 +252,11 @@ mod tests {
         market_feed(event_tx.clone()).await;
 
         // Accounts
-        let accounts = Accounts { balances: (), positions: (), orders: ()};
+        let accounts = Accounts {
+            balances: HashMap::new(),
+            positions: HashMap::new(),
+            orders: Orders { in_flight: HashMap::new(), open: HashMap::new() }
+        };
 
         // ExchangeCommandTx
         let (exchange_tx, exchange_rx) = mpsc::unbounded_channel();

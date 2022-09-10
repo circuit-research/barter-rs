@@ -7,14 +7,20 @@ pub enum Event {
     Command(Command),
 }
 
-pub enum AccountEvent {
+pub enum AccountEvent { // Todo: Perhaps struct with ExchangeId at the top level and timestamp, etc.
     OrderNew,
     OrderCancelled,
     Trade,
     Balances,
-    Disconnected,
+    ConnectionStatus(ConnectionStatus),
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum ConnectionStatus {
+    Connected,
+    CancelOnly,
+    Disconnected,
+}
 pub enum Command {
     Terminate,
     FetchOpenPositions,
