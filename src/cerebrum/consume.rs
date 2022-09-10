@@ -37,6 +37,7 @@ impl From<(Cerebrum<Consumer>, MarketEvent)> for Cerebrum<MarketUpdater> {
             state: MarketUpdater { market },
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
+            exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
             event_tx: cerebrum.event_tx,
         }
@@ -50,6 +51,7 @@ impl From<(Cerebrum<Consumer>, AccountEvent)> for Cerebrum<AccountUpdater> {
             state: AccountUpdater { account },
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
+            exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
             event_tx: cerebrum.event_tx,
         }
@@ -63,6 +65,7 @@ impl From<(Cerebrum<Consumer>, Command)> for Cerebrum<Commander> {
             state: Commander { command },
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
+            exchange_tx: cerebrum.exchange_tx,
             strategy: cerebrum.strategy,
             event_tx: cerebrum.event_tx,
         }
