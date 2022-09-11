@@ -46,7 +46,7 @@ impl<Strategy> From<Cerebrum<Initialiser, Strategy>> for Cerebrum<Consumer, Stra
             state: Consumer,
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
-            exchange_tx: cerebrum.exchange_tx,
+            request_tx: cerebrum.request_tx,
             strategy: cerebrum.strategy,
             audit_tx: cerebrum.audit_tx,
         }
@@ -60,7 +60,7 @@ impl<Strategy> From<Cerebrum<Initialiser, Strategy>> for Cerebrum<Terminated, St
             state: Terminated,
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
-            exchange_tx: cerebrum.exchange_tx,
+            request_tx: cerebrum.request_tx,
             strategy: cerebrum.strategy,
             audit_tx: cerebrum.audit_tx,
         }

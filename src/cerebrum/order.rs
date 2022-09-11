@@ -1,10 +1,10 @@
 use super::{
     Engine, Cerebrum,
     consume::Consumer,
-    account::ClientOrderId,
     exchange::ExchangeRequest
 };
 use barter_integration::model::{Exchange, Side};
+use barter_execution::model::ClientOrderId;
 
 /// OrderGenerator can transition to:
 ///  a) Consumer
@@ -22,14 +22,14 @@ where
     pub fn generate_order_requests(mut self) -> Engine<Strategy> {
         // Send CancelOrders Command to ExchangeClient
         if let Some(cancel_requests) = self.strategy.generate_cancels() {
-            self.exchange_tx
+            self.request_tx
                 .send(ExchangeRequest::CancelOrders(cancel_requests))
                 .unwrap()
         }
 
         // Send OpenOrders Command to ExchangeClient
         if let Some(open_requests) = self.strategy.generate_orders() {
-            self.exchange_tx
+            self.request_tx
                 .send(ExchangeRequest::OpenOrders(open_requests))
                 .unwrap();
         }
@@ -53,7 +53,7 @@ impl<State, Strategy> From<Cerebrum<OrderGenerator<State>, Strategy>> for Cerebr
             state: Consumer,
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
-            exchange_tx: cerebrum.exchange_tx,
+            request_tx: cerebrum.request_tx,
             strategy: cerebrum.strategy,
             audit_tx: cerebrum.audit_tx,
         }
