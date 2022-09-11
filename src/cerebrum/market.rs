@@ -34,7 +34,7 @@ impl<Strategy> From<Cerebrum<MarketUpdater, Strategy>> for Cerebrum<OrderGenerat
             state: OrderGenerator { state: Algorithmic },
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
-            exchange_tx: cerebrum.exchange_tx,
+            request_tx: cerebrum.request_tx,
             strategy: cerebrum.strategy,
             audit_tx: cerebrum.audit_tx,
         }

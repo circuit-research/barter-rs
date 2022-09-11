@@ -18,8 +18,9 @@ tracing-subscriber = { version = "0.3.15", features = ["env-filter", "json"]}
 
 [dependencies]
 # Barter Ecosystem
-barter-data = "0.5.2"
-barter-integration = "0.3.1"
+barter-data = "0.5.5"
+barter-integration = "0.3.4"
+barter-execution = { path = "../barter-execution-rs" }
 
 # Logging
 tracing = "0.1.36"
@@ -28,6 +29,7 @@ tracing = "0.1.36"
 tokio = { version = "1.20.1", features = ["sync"] }
 tokio-stream = { version = "0.1.9", features = ["sync"] }
 futures = "0.3.21"
+async-trait = "0.1.57"
 
 # Error
 thiserror = "1.0.32"

@@ -3,6 +3,7 @@ use barter_data::model::MarketEvent;
 use barter_integration::model::{Exchange, Instrument, Side, Symbol};
 use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
+use barter_execution::model::ConnectionStatus;
 
 #[derive(Debug)]
 pub enum Event {
@@ -27,13 +28,6 @@ pub enum AccountEventKind {
     OrderNew(Order<Open>),
     OrderCancelled(Order<Cancelled>),
     Trade(Trade),
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum ConnectionStatus {
-    Connected,
-    CancelOnly,
-    Disconnected,
 }
 
 #[derive(Debug)]
