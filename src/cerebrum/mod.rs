@@ -3,7 +3,7 @@ use self::{
     command::Commander,
     consume::Consumer,
     event::{AccountEvent, EventFeed},
-    exchange::ExchangeCommand,
+    exchange::ExchangeRequest,
     initialise::Initialiser,
     market::MarketUpdater,
     order::{Algorithmic, Manual, OrderGenerator},
@@ -14,18 +14,20 @@ use barter_data::model::MarketEvent;
 use tokio::sync::mpsc;
 use strategy::IndicatorUpdater;
 
-mod consume;
-mod event;
-mod account;
-mod market;
-mod order;
-mod command;
-mod terminate;
-mod initialise;
-mod exchange;
-mod strategy;
+pub mod consume;
+pub mod event;
+pub mod account;
+pub mod market;
+pub mod order;
+pub mod command;
+pub mod terminate;
+pub mod initialise;
+pub mod exchange;
+pub mod strategy;
 
 // Todo:
+//  - Could have a thread for each exchange that processes MarketEvents -> Indicators/Statistics
+//   '--> Those Indicators/Statistics are then the input into the system (if there are performance issues)
 //  - Derive as eagerly as possible
 //  - Add metric_tx stub?
 //  - Determine what fields go in what state later
@@ -63,6 +65,27 @@ mod strategy;
 //    cancel in flight order
 //  - self.accounts.update_orders_from_open(&order); is taking ref & cloning - only makes sense if
 //    we are using audit_tx... double check this later
+//  - Should I have the concept & tracking of orders_in_flight_cancel? Along with associated State InFlightCancel?
+//  - Account should probably have an Exchange -> perhaps Accounts<'a>(HashMap<&'a Exchange, Account>)
+
+pub struct Components<Strategy> {
+    feed: EventFeed,
+    accounts: Accounts,
+    exchange_tx: mpsc::UnboundedSender<ExchangeRequest>,
+    strategy: Strategy,
+    audit_tx: ()
+}
+
+pub fn new(components: Components<Strategy>) -> Self {
+    Self::Initialiser(Cerebrum {
+        state: Initialiser,
+        feed: components.feed,
+        accounts: components.accounts,
+        exchange_tx: components.exchange_tx,
+        strategy: components.strategy,
+        audit_tx: components.audit_tx
+    })
+}
 
 pub enum Engine<Strategy> {
     Initialiser(Cerebrum<Initialiser, Strategy>),
@@ -79,15 +102,26 @@ pub struct Cerebrum<State, Strategy> {
     pub state: State,
     pub feed: EventFeed,
     pub accounts: Accounts,
-    pub exchange_tx: mpsc::UnboundedSender<ExchangeCommand>,
+    pub exchange_tx: mpsc::UnboundedSender<ExchangeRequest>,
     pub strategy: Strategy,
     pub audit_tx: (),
 }
 
 impl<Strategy> Engine<Strategy>
-where
-    Strategy: IndicatorUpdater,
+    where
+        Strategy: IndicatorUpdater + strategy::OrderGenerator,
 {
+    pub fn new(components: Components<Strategy>) -> Self {
+        Self::Initialiser(Cerebrum {
+            state: Initialiser,
+            feed: components.feed,
+            accounts: components.accounts,
+            exchange_tx: components.exchange_tx,
+            strategy: components.strategy,
+            audit_tx: components.audit_tx
+        })
+    }
+
     pub fn builder() -> EngineBuilder<Strategy> {
         EngineBuilder::new()
     }
@@ -116,16 +150,16 @@ where
                 cerebrum.update(market)
             },
             Self::OrderGeneratorAlgorithmic(cerebrum) => {
-                cerebrum.generate_order()
+                cerebrum.generate_order_requests()
             }
             Self::OrderGeneratorManual((cerebrum, meta)) => {
-                cerebrum.generate_order_manual(meta)
+                cerebrum.generate_order_requests_manual(meta)
             },
             Self::AccountUpdater((cerebrum, account)) => {
                 cerebrum.update(account)
             }
             Self::Commander(cerebrum) => {
-                cerebrum.action_manual_command()
+                cerebrum.execute_manual_command()
             }
             Self::Terminated(cerebrum) => {
                 Self::Terminated(cerebrum)
@@ -139,7 +173,7 @@ where
 pub struct EngineBuilder<Strategy> {
     pub feed: Option<EventFeed>,
     pub accounts: Option<Accounts>,
-    pub exchange_tx: Option<mpsc::UnboundedSender<ExchangeCommand>>,
+    pub exchange_tx: Option<mpsc::UnboundedSender<ExchangeRequest>>,
     pub strategy: Option<Strategy>,
     pub audit_tx: Option<()>,
 }
@@ -169,7 +203,7 @@ impl<Strategy> EngineBuilder<Strategy> {
         }
     }
 
-    pub fn exchange_tx(self, value: mpsc::UnboundedSender<ExchangeCommand>) -> Self {
+    pub fn exchange_tx(self, value: mpsc::UnboundedSender<ExchangeRequest>) -> Self {
         Self {
             exchange_tx: Some(value),
             ..self
