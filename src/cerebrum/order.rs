@@ -1,10 +1,10 @@
-use barter_integration::model::{Exchange, Side};
-use crate::cerebrum::account::ClientOrderId;
-use crate::cerebrum::exchange::ExchangeCommand;
 use super::{
     Engine, Cerebrum,
     consume::Consumer,
+    account::ClientOrderId,
+    exchange::ExchangeRequest
 };
+use barter_integration::model::{Exchange, Side};
 
 /// OrderGenerator can transition to:
 ///  a) Consumer
@@ -15,42 +15,33 @@ pub struct OrderGenerator<State> {
 pub struct Algorithmic;
 pub struct Manual;
 
-impl<Strategy> Cerebrum<OrderGenerator<Algorithmic>, Strategy> {
-    pub fn generate_order(mut self) -> Engine<Strategy> {
-        // Todo:
-        // 1. Analyse open Positions, Orders, Statistics, Indicators
-        // 2. Decide whether to cancel or open orders
-        // 3. Action the decisions
+impl<Strategy> Cerebrum<OrderGenerator<Algorithmic>, Strategy>
+where
+    Strategy: super::strategy::OrderGenerator,
+{
+    pub fn generate_order_requests(mut self) -> Engine<Strategy> {
+        // Send CancelOrders Command to ExchangeClient
+        if let Some(cancel_requests) = self.strategy.generate_cancels() {
+            self.exchange_tx
+                .send(ExchangeRequest::CancelOrders(cancel_requests))
+                .unwrap()
+        }
 
-        // let order_request = Order {
-        //     exchange: (),
-        //     cid: ClientOrderId(),
-        //     state: ()
-        // };
-        // let order_request_batch = vec![
-        //     Order {
-        //         exchange: (),
-        //         cid: ClientOrderId(),
-        //         state: Request {
-        //             kind: OrderKind::Market,
-        //             side: Side::Buy,
-        //             price: 0.0,
-        //             quantity: 0.0
-        //         }
-        //     }
-        // ];
+        // Send OpenOrders Command to ExchangeClient
+        if let Some(open_requests) = self.strategy.generate_orders() {
+            self.exchange_tx
+                .send(ExchangeRequest::OpenOrders(open_requests))
+                .unwrap();
+        }
 
-        self.exchange_tx.send(ExchangeCommand::OpenOrder).unwrap();
         Engine::Consumer(Cerebrum::from(self))
     }
 }
 
 impl<Strategy> Cerebrum<OrderGenerator<Manual>, Strategy> {
-    pub fn generate_order_manual(mut self, meta: ()) -> Engine<Strategy> {
+    pub fn generate_order_requests_manual(mut self, meta: ()) -> Engine<Strategy> {
         // Todo:
-        // 1. Action manual open / close order
-
-        self.exchange_tx.send(ExchangeCommand::OpenOrder).unwrap();
+        // 1. Action manual open / cancel order
         Engine::Consumer(Cerebrum::from(self))
     }
 }
@@ -77,7 +68,7 @@ pub struct Order<State> {
 }
 
 #[derive(Clone, Debug)]
-pub struct Request {
+pub struct RequestOpen {
     pub kind: OrderKind,
     pub side: Side,
     pub price: f64,
@@ -94,6 +85,17 @@ pub struct Open {
     pub quantity: f64,
     pub filled_quantity: f64,
 }
+
+#[derive(Clone, Debug)]
+pub struct RequestCancel {
+    pub kind: OrderKind,
+    pub side: Side,
+    pub price: f64,
+    pub quantity: f64,
+}
+
+#[derive(Clone, Debug)]
+pub struct InFlightCancel;
 
 #[derive(Clone, Debug)]
 pub struct Cancelled;

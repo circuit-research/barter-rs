@@ -12,7 +12,7 @@ pub struct Commander {
 }
 
 impl<Strategy> Cerebrum<Commander, Strategy> {
-    pub fn action_manual_command(mut self) -> Engine<Strategy> {
+    pub fn execute_manual_command(mut self) -> Engine<Strategy> {
         // Action Command
         match self.state.command {
             Command::Terminate => {
@@ -66,4 +66,6 @@ impl<Strategy> From<Cerebrum<Commander, Strategy>> for Cerebrum<OrderGenerator<M
         }
     }
 }
+
+
 
