@@ -36,7 +36,7 @@ impl<Strategy> From<Cerebrum<Consumer, Strategy>> for Cerebrum<MarketUpdater, St
             state: MarketUpdater,
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
-            exchange_tx: cerebrum.exchange_tx,
+            request_tx: cerebrum.request_tx,
             strategy: cerebrum.strategy,
             audit_tx: cerebrum.audit_tx,
         }
@@ -50,7 +50,7 @@ impl<Strategy> From<Cerebrum<Consumer, Strategy>> for Cerebrum<AccountUpdater, S
             state: AccountUpdater,
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
-            exchange_tx: cerebrum.exchange_tx,
+            request_tx: cerebrum.request_tx,
             strategy: cerebrum.strategy,
             audit_tx: cerebrum.audit_tx,
         }
@@ -64,7 +64,7 @@ impl<Strategy> From<(Cerebrum<Consumer, Strategy>, Command)> for Cerebrum<Comman
             state: Commander { command },
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
-            exchange_tx: cerebrum.exchange_tx,
+            request_tx: cerebrum.request_tx,
             strategy: cerebrum.strategy,
             audit_tx: cerebrum.audit_tx,
         }

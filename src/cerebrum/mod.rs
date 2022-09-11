@@ -8,11 +8,11 @@ use self::{
     market::MarketUpdater,
     order::{Algorithmic, Manual, OrderGenerator},
     terminate::Terminated,
+    strategy::IndicatorUpdater,
 };
 use crate::engine::error::EngineError;
 use barter_data::model::MarketEvent;
 use tokio::sync::mpsc;
-use strategy::IndicatorUpdater;
 
 pub mod consume;
 pub mod event;
@@ -72,6 +72,10 @@ pub mod strategy;
 //        to EventFeed also, which can alter the EngineState
 //  - Perhaps the EventFeed should just be a std::mpsc::unbounded? or crossbeam etc.
 //  - Engine probably contains handles to the ExchangePortal, etc. Builder could do all of init...
+//  - Would the idea of an ExchangeId::Simulated(u8) be satisfactory rather than Exchange?
+//  - Make as much stuff reference as possible, eg/ Accounts could use reference Accounts<'a>(HashMap<&'a Symbol...)
+//  - Make ExchangePortal generic so an Engine can be select with a higher performance portal for
+//    a single Exchange only :) Same goes for all other multi-exchange functionality...
 
 pub struct Components<Strategy> {
     feed: EventFeed,
@@ -96,7 +100,7 @@ pub struct Cerebrum<State, Strategy> {
     pub state: State,
     pub feed: EventFeed,
     pub accounts: Accounts,
-    pub exchange_tx: mpsc::UnboundedSender<ExchangeRequest>,
+    pub request_tx: mpsc::UnboundedSender<ExchangeRequest>,
     pub strategy: Strategy,
     pub audit_tx: (),
 }
@@ -110,7 +114,7 @@ impl<Strategy> Engine<Strategy>
             state: Initialiser,
             feed: components.feed,
             accounts: components.accounts,
-            exchange_tx: components.exchange_tx,
+            request_tx: components.exchange_tx,
             strategy: components.strategy,
             audit_tx: components.audit_tx
         })
@@ -223,7 +227,7 @@ impl<Strategy> EngineBuilder<Strategy> {
             state: Initialiser,
             feed: self.feed.ok_or(EngineError::BuilderIncomplete("engine_id"))?,
             accounts: self.accounts.ok_or(EngineError::BuilderIncomplete("account"))?,
-            exchange_tx: self.exchange_tx.ok_or(EngineError::BuilderIncomplete("exchange_tx"))?,
+            request_tx: self.exchange_tx.ok_or(EngineError::BuilderIncomplete("exchange_tx"))?,
             strategy: self.strategy.ok_or(EngineError::BuilderIncomplete("strategy"))?,
             audit_tx: self.audit_tx.ok_or(EngineError::BuilderIncomplete("audit_tx"))?,
         }))
@@ -233,29 +237,31 @@ impl<Strategy> EngineBuilder<Strategy> {
 #[cfg(test)]
 mod tests {
     use std::{
-        time::Duration,
         collections::HashMap,
+        time::Duration,
     };
     use std::ops::Add;
     use crate::{
-        data::{MarketGenerator, Feed, live::MarketFeed},
         cerebrum::{
-            Engine,
             account::{Account, Accounts, Position},
-            strategy, strategy::{IndicatorUpdater},
+            Engine,
+            event::{AccountEvent, AccountEventKind, Balance, Command, Event, EventFeed}, exchange::ExchangeRequest,
             order::{Order, RequestCancel, RequestOpen},
-            event::{Event, EventFeed, AccountEvent, AccountEventKind, Balance, Command, ConnectionStatus},
-            exchange::ExchangeRequest,
+            strategy,
+            strategy::IndicatorUpdater,
 
-        }
+        },
+        data::{Feed, live::MarketFeed, MarketGenerator}
     };
     use barter_data::{
         ExchangeId,
         model::{DataKind, MarketEvent, SubKind, Subscription}
     };
     use barter_integration::model::{Exchange, Instrument, InstrumentKind, Market, Symbol};
+    use chrono::Utc;
     use tokio::sync::mpsc;
     use tokio::sync::mpsc::error::TryRecvError;
+    use barter_execution::model::ConnectionStatus;
     use crate::cerebrum::event::SymbolBalance;
 
     struct StrategyExample {
@@ -278,97 +284,6 @@ mod tests {
 
         fn generate_orders(&self) -> Option<Vec<Order<RequestOpen>>> {
             None
-        }
-    }
-
-    async fn market_feed(markets: Vec<Market>, event_tx: mpsc::UnboundedSender<Event>) {
-        // MarketFeed
-        // Todo:
-        //  - Does this need to be changed for ergonomics to produce an EventFeed rather than MarketFeed?
-        //  - We want to ensure that heavy MarketFeed processing is occurring on it's own thread (not task since it's busy loop)
-
-        let mut market = MarketFeed::init([
-            (ExchangeId::Ftx, "btc", "usdt", InstrumentKind::FuturePerpetual, SubKind::Trade),
-            (ExchangeId::Ftx, "eth", "usdt", InstrumentKind::FuturePerpetual, SubKind::Trade),
-        ]).await.unwrap();
-
-        std::thread::spawn(move || {
-            loop {
-                match market.market_rx.try_recv() {
-                    Ok(market) => {
-                        event_tx.send(Event::Market(market));
-                    },
-                    Err(mpsc::error::TryRecvError::Empty) => {
-                        continue
-                    },
-                    Err(mpsc::error::TryRecvError::Disconnected) => {
-                        break
-                    },
-                }
-            }
-        });
-    }
-
-    async fn account_feed(event_tx: mpsc::UnboundedSender<Event>) {
-        std::thread::spawn(move || {
-            loop {
-                event_tx.send(Event::Account(account_event(AccountEventKind::Balance(
-                    // Same as at start, but test single Balance AccountEvent
-                    SymbolBalance {
-                        symbol: Symbol::from("usdt"),
-                        balance: Balance { total: 1000.0, available: 1000.0 }
-                    }
-                ))));
-
-                std::thread::sleep(Duration::from_secs(2));
-
-                event_tx.send(Event::Account(account_event(AccountEventKind::Balances(
-                    vec![
-                        // Increased btc by 500 since start
-                        SymbolBalance {
-                            symbol: Symbol::from("btc"),
-                            balance: Balance { total: 1500.0, available: 1500.0 }
-                        },
-                        // Reduced usdt by 500 since start
-                        SymbolBalance {
-                            symbol: Symbol::from("usdt"),
-                            balance: Balance { total: 500.0, available: 500.0 }
-                        }
-                    ]
-                ))));
-            };
-        });
-    }
-
-    fn account_event(kind: AccountEventKind) -> AccountEvent {
-        AccountEvent {
-            exchange_time: Default::default(),
-            received_time: Default::default(),
-            exchange: Exchange::from(ExchangeId::Ftx),
-            kind
-        }
-    }
-
-    fn account(instruments: Vec<Instrument>) -> Account {
-        let positions = instruments
-            .iter()
-            .cloned()
-            .map(|instrument| (instrument, Position))
-            .collect();
-
-        let mut balances = instruments
-            .into_iter()
-            .map(|instrument| [instrument.base, instrument.quote])
-            .flatten()
-            // Todo: Later we will init Balances during Init, so this would be (0.0, 0.0) until exchange update
-            .map(|symbol| (symbol, Balance { total: 1000.0, available: 1000.0 }))
-            .collect();
-
-        Account {
-            balances,
-            positions,
-            orders_in_flight: HashMap::new(),
-            orders_open: HashMap::new()
         }
     }
 
@@ -489,20 +404,10 @@ mod tests {
         tokio::task::spawn(async move {
             while let Some(request) = exchange_rx.recv().await {
                 match request {
-                    ExchangeRequest::ConnectionStatus => {
-                        event_tx
-                            .send(Event::Account(AccountEvent {
-                                exchange_time: Default::default(),
-                                received_time: Default::default(),
-                                exchange: Exchange::from(ExchangeId::Ftx),
-                                kind: AccountEventKind::ConnectionStatus(ConnectionStatus::Connected)
-                            }))
-                            .unwrap();
-                    }
-                    ExchangeRequest::FetchOpenOrders => {
+                    ExchangeRequest::FetchOpenOrders(_)=> {
                         // Todo:
                     }
-                    ExchangeRequest::FetchBalances => {
+                    ExchangeRequest::FetchBalances(_) => {
                         // Todo:
                     }
                     ExchangeRequest::OpenOrders(_) => {

@@ -2,14 +2,15 @@ use super::{
     Cerebrum, Engine,
     consume::Consumer,
     event::{AccountEvent, AccountEventKind, Balance, SymbolBalance},
-    order::{Order, InFlight},
+    order::{Order, Open, InFlight, Cancelled},
 };
 use barter_integration::model::{Exchange, Instrument, Symbol};
 use barter_data::model::MarketEvent;
+use barter_execution::model::ClientOrderId;
 use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
-use crate::cerebrum::order::{Cancelled, Open};
+
 
 /// AccountUpdater can transition to:
 ///  a=) Consumer
@@ -60,7 +61,7 @@ impl<Strategy> From<Cerebrum<AccountUpdater, Strategy>> for Cerebrum<Consumer, S
             state: Consumer,
             feed: cerebrum.feed,
             accounts: cerebrum.accounts,
-            exchange_tx: cerebrum.exchange_tx,
+            request_tx: cerebrum.request_tx,
             strategy: cerebrum.strategy,
             audit_tx: cerebrum.audit_tx,
         }
@@ -151,7 +152,7 @@ impl Accounts {
                     "received Order<Open> with duplicate cid to another in orders_open"
                 );
             }
-            (Some(in_flight), None) => {
+            (Some(_), None) => {
                 debug!(
                     exchange = ?order.exchange,
                     cid = ?order.cid,
@@ -223,5 +224,4 @@ impl Accounts {
 #[derive(Debug)]
 pub struct Position;
 
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct ClientOrderId(pub Uuid);
+
