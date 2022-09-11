@@ -24,6 +24,7 @@ pub mod terminate;
 pub mod initialise;
 pub mod exchange;
 pub mod strategy;
+mod simulated;
 
 // Todo:
 //  - Could have a thread for each exchange that processes MarketEvents -> Indicators/Statistics
