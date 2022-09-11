@@ -1,3 +1,4 @@
+use crate::cerebrum::event::{Command, Event};
 use super::{Cerebrum, Engine, consume::Consumer, terminate::Terminated};
 
 /// Initialiser can transition to one of:
@@ -7,8 +8,33 @@ pub struct Initialiser;
 
 impl<Strategy> Cerebrum<Initialiser, Strategy> {
     pub fn init(mut self) -> Engine<Strategy> {
-        // Todo: Hit ExchangeClient to get balances, orders, positions (may fail)
-        // Todo: Add failure transition to Engine::Terminated if it's unrecoverable
+        // Todo:
+        //  - Or we do we this in the Builder? Perhaps...
+        //  - Should this be 'AccountInitialisation'?
+        //  - There should be an initialisation timeout
+        //  - Hit ExchangeClient to get balances, orders, positions (may fail)
+        //  - Add failure transition to Engine::Terminated if it's unrecoverable
+
+        // Process:
+        // 1. Ask ExchangePortal for ConnectionStatus of every ExchangeClient & react
+        //   '--> ExchangeClient may still be starting up, perhaps have a timeout.
+        // 2. Once Online, ask ExchangeClient for Balances & Orders
+        // 3. Wait for responses with timeouts
+        // 4. Use responses to populate Accounts
+        // loop {
+        //     match self.feed.next() {
+        //         Event::Account(account) => {
+        //             break Engine::Consumer(Cerebrum::from(self))
+        //         }
+        //         Event::Command(Command::Terminate) => {
+        //             break Engine::Terminated(Cerebrum::from(self))
+        //         }
+        //         _ => continue
+        //     }
+        // }
+
+
+
         Engine::Consumer(Cerebrum::from(self))
     }
 }
