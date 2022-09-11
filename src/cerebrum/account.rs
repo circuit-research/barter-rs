@@ -12,7 +12,7 @@ use uuid::Uuid;
 use crate::cerebrum::order::{Cancelled, Open};
 
 /// AccountUpdater can transition to:
-///  a) Consumer
+///  a=) Consumer
 pub struct AccountUpdater;
 
 impl<Strategy> Cerebrum<AccountUpdater, Strategy> {

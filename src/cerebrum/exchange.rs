@@ -1,17 +1,19 @@
 use super::{
     event::{ConnectionStatus, SymbolBalance},
     account::ClientOrderId,
-    order::{Order, Request},
+    order::{Order, RequestCancel, RequestOpen},
 };
-use barter_integration::model::Instrument;
+use barter_integration::model::{Exchange, Instrument};
 use std::{
     collections::HashMap,
     time::Duration
 };
 
-// Todo: May need to have an synchronous interface prior to async for eg/ GenerateClientOrderId
+
+// Todo:
+//  - May need to have an synchronous interface prior to async for eg/ GenerateClientOrderId
 #[derive(Debug)]
-pub enum ExchangeCommand {
+pub enum ExchangeRequest {
     // Check connection status
     ConnectionStatus,
 
@@ -20,14 +22,16 @@ pub enum ExchangeCommand {
     FetchBalances,
 
     // Open Orders
-    OpenOrder(Order<Request>),
-    OpenOrderBatch(Order<Vec<Request>>),
+    // OpenOrder(Order<RequestOpen>),
+    // OpenOrderBatch(Order<Vec<RequestOpen>>),
+    OpenOrders(Vec<Order<RequestOpen>>),
 
     // Cancel Orders
-    CancelOrderById,
-    CancelOrderByInstrument,
-    CancelOrderByBatch,
-    CancelOrderAll,
+    // CancelOrderById,
+    // CancelOrderByInstrument,
+    // CancelOrderByBatch,
+    CancelOrders(Vec<Order<RequestCancel>>),
+    CancelOrdersAll(Vec<Exchange>),
 }
 
 pub trait ExchangeClient {

@@ -246,7 +246,7 @@ pub mod engine;
 
 
 /// Todo: WIP PoC Engine
-mod cerebrum;
+pub mod cerebrum;
 
 #[macro_use]
 extern crate prettytable;
