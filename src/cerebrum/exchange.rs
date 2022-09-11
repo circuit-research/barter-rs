@@ -8,10 +8,12 @@ use std::{
     collections::HashMap,
     time::Duration
 };
+use tokio::sync::mpsc;
 
 
 // Todo:
 //  - May need to have an synchronous interface prior to async for eg/ GenerateClientOrderId
+//  - Should this be a struct with Exchange on the top?
 #[derive(Debug)]
 pub enum ExchangeRequest {
     // Check connection status
@@ -32,6 +34,14 @@ pub enum ExchangeRequest {
     // CancelOrderByBatch,
     CancelOrders(Vec<Order<RequestCancel>>),
     CancelOrdersAll(Vec<Exchange>),
+}
+
+struct ExchangePortal<Client>
+where
+    Client: ExchangeClient,
+{
+    request_rx: mpsc::UnboundedReceiver<ExchangeRequest>,
+    clients: HashMap<Exchange, Client>
 }
 
 pub trait ExchangeClient {

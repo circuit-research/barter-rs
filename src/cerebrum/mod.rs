@@ -54,7 +54,7 @@ pub mod strategy;
 //  - Send Events to the audit_tx eg/ update_from_market { event_tx.send(market).unwrap() }
 //  - Is it valid to have a SymbolBalance, or do we need the idea of SymbolInstrumentKindBalance?
 //  - Update Balances can be more efficient since we know what Markets we trade at the start
-//   '--> Change update_balance() .expect() for error! like open orde rlogic
+//   '--> Change update_balance() .expect() for error! like open order logic
 //   '--> Can ignore anything which contains_key() returns None etc
 //  - More efficient to use Accounts(Vec<(Exchange, Account)) (or have Exchange inside Account?
 //    '--> Benchmark, but probably faster for since people won't use many exchanges at once?
@@ -67,6 +67,11 @@ pub mod strategy;
 //    we are using audit_tx... double check this later
 //  - Should I have the concept & tracking of orders_in_flight_cancel? Along with associated State InFlightCancel?
 //  - Account should probably have an Exchange -> perhaps Accounts<'a>(HashMap<&'a Exchange, Account>)
+//  - Add states to transition to when we go unhealthy via ConnectionStatus eg/ CancelOnly, Offline etc.
+//   '--> Can we add the MarketFeed health into this also? Want the MarketFeed to send ConnectionStatus / health
+//        to EventFeed also, which can alter the EngineState
+//  - Perhaps the EventFeed should just be a std::mpsc::unbounded? or crossbeam etc.
+//  - Engine probably contains handles to the ExchangePortal, etc. Builder could do all of init...
 
 pub struct Components<Strategy> {
     feed: EventFeed,
@@ -74,17 +79,6 @@ pub struct Components<Strategy> {
     exchange_tx: mpsc::UnboundedSender<ExchangeRequest>,
     strategy: Strategy,
     audit_tx: ()
-}
-
-pub fn new(components: Components<Strategy>) -> Self {
-    Self::Initialiser(Cerebrum {
-        state: Initialiser,
-        feed: components.feed,
-        accounts: components.accounts,
-        exchange_tx: components.exchange_tx,
-        strategy: components.strategy,
-        audit_tx: components.audit_tx
-    })
 }
 
 pub enum Engine<Strategy> {
@@ -238,16 +232,54 @@ impl<Strategy> EngineBuilder<Strategy> {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-    use std::time::Duration;
-    use barter_data::ExchangeId;
-    use barter_data::model::{MarketEvent, SubKind};
+    use std::{
+        time::Duration,
+        collections::HashMap,
+    };
+    use std::ops::Add;
+    use crate::{
+        data::{MarketGenerator, Feed, live::MarketFeed},
+        cerebrum::{
+            Engine,
+            account::{Account, Accounts, Position},
+            strategy, strategy::{IndicatorUpdater},
+            order::{Order, RequestCancel, RequestOpen},
+            event::{Event, EventFeed, AccountEvent, AccountEventKind, Balance, Command, ConnectionStatus},
+            exchange::ExchangeRequest,
+
+        }
+    };
+    use barter_data::{
+        ExchangeId,
+        model::{DataKind, MarketEvent, SubKind, Subscription}
+    };
     use barter_integration::model::{Exchange, Instrument, InstrumentKind, Market, Symbol};
     use tokio::sync::mpsc;
-    use crate::cerebrum::account::{Account, Position};
-    use crate::cerebrum::event::{AccountEvent, AccountEventKind, Balance, Command, Event, SymbolBalance};
-    use crate::data::live::MarketFeed;
-    use super::*;
+    use tokio::sync::mpsc::error::TryRecvError;
+    use crate::cerebrum::event::SymbolBalance;
+
+    struct StrategyExample {
+        rsi: ta::indicators::RelativeStrengthIndex,
+    }
+
+    impl IndicatorUpdater for StrategyExample {
+        fn update_indicators(&mut self, market: &MarketEvent) {
+            match &market.kind {
+                DataKind::Trade(trade) => trade.price,
+                DataKind::Candle(candle) => candle.close,
+            };
+        }
+    }
+
+    impl strategy::OrderGenerator for StrategyExample {
+        fn generate_cancels(&self) -> Option<Vec<Order<RequestCancel>>> {
+            None
+        }
+
+        fn generate_orders(&self) -> Option<Vec<Order<RequestOpen>>> {
+            None
+        }
+    }
 
     async fn market_feed(markets: Vec<Market>, event_tx: mpsc::UnboundedSender<Event>) {
         // MarketFeed
@@ -340,71 +372,194 @@ mod tests {
         }
     }
 
+    // Notes:
+    // - Hard-coded to use one Exchange, Ftx
     #[tokio::test]
     async fn it_works() {
+        // Initialise structured JSON subscriber
         init_logging();
 
-        // Markets
-        let exchange = Exchange::from(ExchangeId::Ftx);
-        let markets = vec![
-            Market::new(exchange.clone(), ("btc", "usdt", InstrumentKind::FuturePerpetual)),
-            Market::new(exchange.clone(), ("eth", "usdt", InstrumentKind::FuturePerpetual)),
-        ];
+        // Duration to run before Termination
+        let terminate = Duration::from_secs(6000);
 
-        // EventFeed
-        let (event_tx, event_rx) = tokio::sync::mpsc::unbounded_channel();
+        // Load Subscriptions
+        let subscriptions = load_subscriptions();
+
+        // Central EventFeed: will receive Event::Market, Event::Account & Event::Command
+        let (event_tx, event_rx) = mpsc::unbounded_channel();
         let feed = EventFeed::new(event_rx);
 
-        // Spawn MarketFeed on separate thread
-        market_feed(markets.clone(), event_tx.clone()).await;
-
-        // Accounts
-        let instruments = markets
-            .into_iter()
-            .map(|market| {
-                let Market { exchange, instrument } = market;
-                instrument
-            })
-            .collect();
-
-        let mut accounts = HashMap::new();
-        accounts.insert(exchange.clone(), account(instruments));
-
-        // ExchangeCommandTx
+        // ExchangeCommand Transmitter
         let (exchange_tx, exchange_rx) = mpsc::unbounded_channel();
 
-        // Spawn STUBBED AccountFEed on separate thread
-        account_feed(event_tx.clone()).await;
+        // Event Audit Transmitter: Stubbed For Now
+        // let (audit_tx, audit_rx) = mpsc::unbounded_channel();
+        let audit_tx = ();
 
-        // Strategy
-        struct StubbedStrategy;
-        let strategy = StubbedStrategy;
+        // EventFeed Component: MarketFeed:
+        init_market_feed(event_tx.clone(), &subscriptions).await;
 
-        impl IndicatorUpdater for StubbedStrategy {
-            fn update_indicators(&mut self, market: &MarketEvent) {
-            }
-        }
+        // EventFeed Component: AccountFeed:
+        init_account_feed(event_tx.clone(), exchange_rx);
 
-        let mut engine = Engine::builder()
-            .feed(feed)
-            .audit_tx(())
-            .accounts(Accounts(accounts))
+        // EventFeed Component: CommandFeed
+        init_command_feed(event_tx, terminate);
+
+        // Accounts(HashMap<Exchange, Account>):
+        let accounts = init_accounts(
+            Exchange::from(ExchangeId::Ftx), subscriptions
+        );
+
+        // StrategyExample
+        let strategy = StrategyExample {
+            rsi: ta::indicators::RelativeStrengthIndex::new(14).unwrap()
+        };
+
+        // Build Engine
+        let engine = Engine::builder()
+            .feed(feed) // Todo: Should builder set this up?
+            .accounts(accounts) // Todo: Should builder set this up?
             .exchange_tx(exchange_tx)
-            .strategy(StubbedStrategy)
+            .strategy(strategy)
+            .audit_tx(audit_tx)
             .build()
-            .unwrap();
+            .expect("failed to build Engine");
 
+        // Run Engine
         std::thread::spawn(move || {
             engine.run()
         });
 
-        tokio::spawn(async move {
-            tokio::time::sleep(Duration::from_secs(30)).await;
-            event_tx.send(Event::Command(Command::Terminate));
-        }).await;
+        // tokio::task::spawn(async move {
+        //     engine.run()
+        // }).await.unwrap();
 
+        tokio::time::sleep(terminate.add(Duration::from_secs(1))).await
+    }
 
-        tokio::time::sleep(Duration::from_secs(32)).await
+    fn load_subscriptions() -> Vec<Subscription> {
+        vec![
+            Subscription::new(
+                ExchangeId::Ftx,
+                ("btc", "usdt", InstrumentKind::FuturePerpetual),
+                SubKind::Trade
+            ),
+            Subscription::new(
+                ExchangeId::Ftx,
+                ("eth", "usdt", InstrumentKind::FuturePerpetual),
+                SubKind::Trade
+            ),
+            Subscription::new(
+                ExchangeId::Ftx,
+                ("xrp", "usdt", InstrumentKind::FuturePerpetual),
+                SubKind::Trade
+            ),
+        ]
+    }
+
+    async fn init_market_feed(event_tx: mpsc::UnboundedSender<Event>, subscriptions: &Vec<Subscription>) {
+        let mut market_rx = MarketFeed::init(subscriptions.clone())
+            .await
+            .expect("failed to initialise MarketFeed")
+            .market_rx;
+
+        std::thread::spawn(move || {
+            loop {
+                match market_rx.try_recv() {
+                    Ok(market) => {
+                        event_tx
+                            .send(Event::Market(market))
+                            .expect("failed to send MarketEvent to EventFeed")
+                    },
+                    Err(mpsc::error::TryRecvError::Empty) => {
+                        // panic!("MarketFeed empty")
+                        continue
+                    },
+                    Err(mpsc::error::TryRecvError::Disconnected) => {
+                        panic!("MarketFeed failed")
+                    },
+                }
+            }
+        });
+    }
+
+    // Todo:
+//  - Will change when we setup the ExchangeClients properly, likely needs Vec<Instrument>
+    fn init_account_feed(event_tx: mpsc::UnboundedSender<Event>, mut exchange_rx: mpsc::UnboundedReceiver<ExchangeRequest>) {
+        tokio::task::spawn(async move {
+            while let Some(request) = exchange_rx.recv().await {
+                match request {
+                    ExchangeRequest::ConnectionStatus => {
+                        event_tx
+                            .send(Event::Account(AccountEvent {
+                                exchange_time: Default::default(),
+                                received_time: Default::default(),
+                                exchange: Exchange::from(ExchangeId::Ftx),
+                                kind: AccountEventKind::ConnectionStatus(ConnectionStatus::Connected)
+                            }))
+                            .unwrap();
+                    }
+                    ExchangeRequest::FetchOpenOrders => {
+                        // Todo:
+                    }
+                    ExchangeRequest::FetchBalances => {
+                        // Todo:
+                    }
+                    ExchangeRequest::OpenOrders(_) => {
+                        // Todo:
+                    }
+                    ExchangeRequest::CancelOrders(_) => {
+                        // Todo:
+                    }
+                    ExchangeRequest::CancelOrdersAll(_) => {
+                        // Todo:
+                    }
+                }
+            }
+        });
+    }
+
+    fn init_command_feed(event_tx: mpsc::UnboundedSender<Event>, terminate: Duration) {
+        std::thread::spawn(move || {
+            std::thread::sleep(terminate);
+            event_tx
+                .send(Event::Command(Command::Terminate))
+                .unwrap()
+        });
+    }
+
+    fn init_accounts(exchange: Exchange, subscriptions: Vec<Subscription>) -> Accounts {
+        let instruments = subscriptions
+            .into_iter()
+            .map(|subscription| subscription.instrument)
+            .collect();
+
+        let mut accounts = HashMap::new();
+        accounts.insert(exchange, init_account(instruments));
+        Accounts(accounts)
+    }
+
+    fn init_account(instruments: Vec<Instrument>) -> Account {
+        let positions = instruments
+            .iter()
+            .cloned()
+            .map(|instrument| (instrument, Position))
+            .collect();
+
+        let mut balances = instruments
+            .into_iter()
+            .map(|instrument| [instrument.base, instrument.quote])
+            .flatten()
+            // Todo: Later we will init Balances during Init, so this would be (0.0, 0.0) until exchange update
+            .map(|symbol| (symbol, Balance { total: 1000.0, available: 1000.0 }))
+            .collect();
+
+        Account {
+            balances,
+            positions,
+            orders_in_flight: HashMap::new(),
+            orders_open: HashMap::new()
+        }
     }
 
     /// Initialise a `Subscriber` for `Tracing` Json logs and install it as the global default.
