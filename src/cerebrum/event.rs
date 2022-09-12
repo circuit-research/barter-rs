@@ -3,7 +3,7 @@ use barter_data::model::MarketEvent;
 use barter_integration::model::{Exchange, Instrument, Side, Symbol};
 use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
-use barter_execution::model::ConnectionStatus;
+use crate::cerebrum::exchange::ConnectionStatus;
 
 #[derive(Debug)]
 pub enum Event {

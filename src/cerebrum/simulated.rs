@@ -1,12 +1,16 @@
-use std::collections::HashMap;
-use std::time::Duration;
+use super::{
+    event::{Balance, Event},
+    exchange::{ExchangeClient, ClientOrderId, ConnectionStatus},
+    order::{Order, Open},
+};
 use barter_integration::model::{Instrument, Symbol};
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::UnboundedSender;
-use barter_execution::model::{ClientOrderId, ConnectionStatus};
-use barter_execution::simulated::Order;
-use crate::cerebrum::event::{Balance, Event};
-use crate::cerebrum::exchange::ExchangeClient;
+use std::{
+    time::Duration,
+    collections::HashMap
+};
+use tokio::sync::{
+    mpsc, mpsc::UnboundedSender
+};
 use async_trait::async_trait;
 
 #[derive(Clone, Debug)]
@@ -18,16 +22,16 @@ pub struct Config {
 }
 
 #[derive(Clone, Debug)]
-pub struct SimulatedExchange<'a> {
+pub struct SimulatedExchange {
     pub config: Config,
     pub connection_status: ConnectionStatus,
     pub event_tx: mpsc::UnboundedSender<Event>,
-    pub balances: HashMap<&'a Symbol, Balance>,
-    pub open: HashMap<ClientOrderId, Order>,
+    pub balances: HashMap<Symbol, Balance>,
+    pub open: HashMap<ClientOrderId, Order<Open>>,
 }
 
 #[async_trait]
-impl ExchangeClient for SimulatedExchange<'_> {
+impl ExchangeClient for SimulatedExchange {
     type Config = Config;
 
     async fn init(config: Self::Config, event_tx: UnboundedSender<Event>) -> Self {
@@ -37,10 +41,11 @@ impl ExchangeClient for SimulatedExchange<'_> {
             .iter()
             .map(|instrument| [&instrument.base, &instrument.quote])
             .flatten()
-            .map(|symbol| (symbol, config.starting_balance.clone()))
+            .map(|symbol| (symbol.clone(), config.starting_balance.clone()))
             .collect();
 
         Self {
+
             config,
             connection_status: ConnectionStatus::Connected,
             event_tx,
