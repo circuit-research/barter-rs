@@ -6,10 +6,9 @@ use super::{
 };
 use barter_integration::model::{Exchange, Instrument, Symbol};
 use barter_data::model::MarketEvent;
-use barter_execution::model::ClientOrderId;
+use crate::cerebrum::exchange::ClientOrderId;
 use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
-use uuid::Uuid;
 
 
 /// AccountUpdater can transition to:
@@ -67,7 +66,6 @@ impl<Strategy> From<Cerebrum<AccountUpdater, Strategy>> for Cerebrum<Consumer, S
         }
     }
 }
-
 
 pub struct Accounts(pub HashMap<Exchange, Account>);
 

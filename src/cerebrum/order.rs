@@ -4,7 +4,7 @@ use super::{
     exchange::ExchangeRequest
 };
 use barter_integration::model::{Exchange, Side};
-use barter_execution::model::ClientOrderId;
+use crate::cerebrum::exchange::ClientOrderId;
 
 /// OrderGenerator can transition to:
 ///  a) Consumer

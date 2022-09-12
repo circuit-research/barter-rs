@@ -1,4 +1,3 @@
-use crate::cerebrum::event::{Command, Event};
 use super::{Cerebrum, Engine, consume::Consumer, terminate::Terminated};
 
 /// Initialiser can transition to one of:

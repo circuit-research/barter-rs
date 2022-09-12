@@ -25,6 +25,7 @@ pub mod initialise;
 pub mod exchange;
 pub mod strategy;
 mod simulated;
+pub mod binance;
 
 // Todo:
 //  - Could have a thread for each exchange that processes MarketEvents -> Indicators/Statistics
@@ -107,8 +108,8 @@ pub struct Cerebrum<State, Strategy> {
 }
 
 impl<Strategy> Engine<Strategy>
-    where
-        Strategy: IndicatorUpdater + strategy::OrderGenerator,
+where
+    Strategy: IndicatorUpdater + strategy::OrderGenerator,
 {
     pub fn new(components: Components<Strategy>) -> Self {
         Self::Initialiser(Cerebrum {
@@ -246,24 +247,20 @@ mod tests {
         cerebrum::{
             account::{Account, Accounts, Position},
             Engine,
-            event::{AccountEvent, AccountEventKind, Balance, Command, Event, EventFeed}, exchange::ExchangeRequest,
+            event::{Balance, Command, Event, EventFeed}, exchange::ExchangeRequest,
             order::{Order, RequestCancel, RequestOpen},
             strategy,
             strategy::IndicatorUpdater,
 
         },
-        data::{Feed, live::MarketFeed, MarketGenerator}
+        data::{live::MarketFeed}
     };
     use barter_data::{
         ExchangeId,
         model::{DataKind, MarketEvent, SubKind, Subscription}
     };
-    use barter_integration::model::{Exchange, Instrument, InstrumentKind, Market, Symbol};
-    use chrono::Utc;
+    use barter_integration::model::{Exchange, Instrument, InstrumentKind};
     use tokio::sync::mpsc;
-    use tokio::sync::mpsc::error::TryRecvError;
-    use barter_execution::model::ConnectionStatus;
-    use crate::cerebrum::event::SymbolBalance;
 
     struct StrategyExample {
         rsi: ta::indicators::RelativeStrengthIndex,
