@@ -1,5 +1,5 @@
 use super::order::{
-    Cancelled, Order, RequestCancel, RequestOpen
+    Order, RequestCancel, RequestOpen
 };
 use barter_data::model::MarketEvent;
 

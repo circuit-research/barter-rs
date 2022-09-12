@@ -1,20 +1,15 @@
 use super::{
-    event::{Event, SymbolBalance},
+    event::Event,
     order::{Order, RequestCancel, RequestOpen},
 };
 use barter_integration::model::{Exchange, Instrument};
-use barter_execution::{
-    model::{ClientOrderId, ConnectionStatus},
-};
 use std::{
     collections::HashMap,
-    time::Duration
 };
-use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
 use tracing::info;
-use barter_execution::model::ClientId;
 use async_trait::async_trait;
+use uuid::Uuid;
 
 /// Responsibilities:
 /// - Determines best way to action an [`ExchangeRequest`] given the constraints of the exchange.
@@ -65,7 +60,7 @@ where
         // Todo:
         //  - Validate input
         //  - I don't think there is any reason the core would ask for ConnectionStatus, but it would be sent
-        //  - Can ExchangePortal act as the Driver?
+        //  - Can ExchangePortal act as the Driver? Yes.
         //  - Make ExchangePortal state machine...
 
         // 1. Store HashMap<Exchange, ClientId> for association & to keep every ClientId(Config)
@@ -160,4 +155,23 @@ pub enum ExchangeRequest {
     // CancelOrderByBatch,
     CancelOrders(Vec<Order<RequestCancel>>),
     CancelOrdersAll(Vec<Exchange>),
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
+pub struct ClientOrderId(pub Uuid);
+
+#[derive(Clone, Copy, Debug)]
+pub enum ConnectionStatus {
+    Connected,
+    CancelOnly,
+    Disconnected,
+}
+
+// Todo:
+//   - Better name for this? This is the equivilant to ExchangeId...
+//    '--> renamed to ClientId for now to avoid confusion in development
+#[derive(Clone, Debug)]
+pub enum ClientId {
+    Simulated(super::simulated::Config),
+    Binance(super::binance::Config)
 }
