@@ -20,7 +20,6 @@ pub trait ExchangeClient {
     async fn init(config: Self::Config, event_tx: mpsc::UnboundedSender<Event>) -> Self;
     async fn consume(&self, event_tx: mpsc::UnboundedSender<Event>) -> Result<(), ()>;
 
-    fn instruments(&self) -> &[Instrument];
     fn connection_status(&self) -> ConnectionStatus;
 
     async fn fetch_orders_open(&self) -> ();
@@ -79,6 +78,7 @@ where
                     // Construct New Driver (will never fail)
                     // Driver spawns new Clients
                 }
+                ClientId::Binance(config) => {}
             }
 
             // Runner
