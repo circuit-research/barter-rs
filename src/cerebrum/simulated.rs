@@ -59,10 +59,6 @@ impl ExchangeClient for SimulatedExchange {
         Ok(())
     }
 
-    fn instruments(&self) -> &[Instrument] {
-        todo!()
-    }
-
     fn connection_status(&self) -> ConnectionStatus {
         todo!()
     }

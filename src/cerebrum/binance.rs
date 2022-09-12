@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use barter_integration::model::Instrument;
+use barter_integration::model::{Instrument, Symbol};
 use async_trait::async_trait;
 use chrono::Utc;
 use hmac::Hmac;
@@ -18,12 +18,19 @@ pub struct Config {
     hmac: Hmac<sha2::Sha256>,
 }
 
-pub struct Pair(String);
+#[derive(Clone, Debug, Hash, Eq, PartialEq)]
+pub struct BinancePair(String);
+
+impl BinancePair {
+    pub fn new(base: &Symbol, quote: &Symbol) -> Self {
+        Self(format!("{base}{quote}").to_uppercase())
+    }
+}
 
 // Todo:
 //  - Look into rate limit weighting & optimisation
 pub struct Binance {
-    instruments_map: HashMap<Pair, Instrument>,
+    instruments_map: HashMap<BinancePair, Instrument>,
     api_key: String,
     hmac: Hmac<sha2::Sha256>,
     status: ConnectionStatus,
@@ -50,12 +57,6 @@ impl ExchangeClient for Binance {
 
     async fn consume(&self, event_tx: UnboundedSender<Event>) -> Result<(), ()> {
         todo!()
-    }
-
-    fn instruments(&self) -> &[Instrument] {
-        self.instruments_map
-            .values()
-            .into()
     }
 
     fn connection_status(&self) -> ConnectionStatus {
@@ -109,11 +110,11 @@ impl ExchangeClient for Binance {
 }
 
 impl Binance {
-    fn instruments_map(instruments: Vec<Instrument>) -> HashMap<Pair, Instrument> {
+    fn instruments_map(instruments: Vec<Instrument>) -> HashMap<BinancePair, Instrument> {
         instruments
             .into_iter()
             .map(|instrument| {
-                (format!("{}{}", &instrument.base, &instrument.quote).to_uppercase(), instrument)
+                (BinancePair::new(&instrument.base, &instrument.quote), instrument)
             })
             .collect()
     }
@@ -123,25 +124,15 @@ impl Binance {
 pub fn de_string_secret_as_hmac<'de, De, Di>(deserializer: De) -> Result<hmac::Hmac<Di>, De::Error>
 where
     De: serde::de::Deserializer<'de>,
-    Di: hmac::digest::core_api::CoreProxy,
-    Di::Core: hmac::digest::HashMarker
-        + hmac::digest::core_api::UpdateCore
-        + hmac::digest::core_api::FixedOutputCore
-        + hmac::digest::core_api::BufferKindUser
-        + Default
-        + Clone,
-    Di::BlockSize: hmac::digest::crypto_common::generic_array::ArrayLength<u8>,
-    // hmac::digest::Update
-    // + hmac::digest::BlockInput
-    // + hmac::digest::FixedOutput
-    // + hmac::digest::Reset
-    // + Default
-    // + Clone,
-    // <Di as hmac::digest::core_api::CoreProxy::CoreProxy>::Core: hmac::digest::HashMarker
-    // Di::BlockSize: hmac::crypto_mac::generic_array::ArrayLength<u8>,
-    // Di::BlockSize: hmac::digest::crypto_common::generic_array::ArrayLength<u8>,
+    Di: hmac::digest::Update
+    + hmac::digest::BlockInput
+    + hmac::digest::FixedOutput
+    + hmac::digest::Reset
+    + Default
+    + Clone,
+    Di::BlockSize: hmac::crypto_mac::generic_array::ArrayLength<u8>,
 {
-    use hmac::digest::KeyInit;
+    use hmac::NewMac;
 
     let data: &[u8] = serde::Deserialize::deserialize(deserializer)
         .map(str::as_bytes)?;
