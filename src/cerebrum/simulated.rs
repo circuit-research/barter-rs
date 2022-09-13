@@ -1,6 +1,6 @@
 use super::{
     event::{Balance, Event},
-    exchange::{ExchangeClient, ClientOrderId, ConnectionStatus},
+    exchange::{ExchangeClient, ClientOrderId, ClientStatus},
     order::{Order, Open},
 };
 use barter_integration::model::{Instrument, Symbol};
@@ -24,7 +24,7 @@ pub struct Config {
 #[derive(Clone, Debug)]
 pub struct SimulatedExchange {
     pub config: Config,
-    pub connection_status: ConnectionStatus,
+    pub connection_status: ClientStatus,
     pub event_tx: mpsc::UnboundedSender<Event>,
     pub balances: HashMap<Symbol, Balance>,
     pub open: HashMap<ClientOrderId, Order<Open>>,
@@ -47,7 +47,7 @@ impl ExchangeClient for SimulatedExchange {
         Self {
 
             config,
-            connection_status: ConnectionStatus::Connected,
+            connection_status: ClientStatus::Connected,
             event_tx,
             balances,
             open: HashMap::new(),
@@ -59,7 +59,7 @@ impl ExchangeClient for SimulatedExchange {
         Ok(())
     }
 
-    fn connection_status(&self) -> ConnectionStatus {
+    fn connection_status(&self) -> ClientStatus {
         todo!()
     }
 

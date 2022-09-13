@@ -131,7 +131,7 @@ where
             // Transition to the next trading state
             self = self.next();
 
-            if let Engine::Terminated(_) = self {
+            if let Self::Terminated(_) = self {
                 // Todo: Print trading session results & persist
                 break 'trading
             }

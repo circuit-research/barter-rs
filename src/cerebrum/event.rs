@@ -3,7 +3,7 @@ use barter_data::model::MarketEvent;
 use barter_integration::model::{Exchange, Instrument, Side, Symbol};
 use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
-use crate::cerebrum::exchange::ConnectionStatus;
+use crate::cerebrum::exchange::ClientStatus;
 
 #[derive(Debug)]
 pub enum Event {
@@ -22,7 +22,7 @@ pub struct AccountEvent {
 
 #[derive(Debug)]
 pub enum AccountEventKind {
-    ConnectionStatus(ConnectionStatus),
+    ConnectionStatus(ClientStatus),
     Balance(SymbolBalance),
     Balances(Vec<SymbolBalance>),
     OrderNew(Order<Open>),
