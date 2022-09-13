@@ -4,6 +4,7 @@ use barter_integration::model::{Exchange, Instrument, Side, Symbol};
 use chrono::{DateTime, Utc};
 use tokio::sync::mpsc;
 use crate::cerebrum::exchange::ClientStatus;
+use crate::execution::error::ExecutionError;
 
 #[derive(Debug)]
 pub enum Event {
@@ -27,7 +28,9 @@ pub enum AccountEventKind {
     Balances(Vec<SymbolBalance>),
     OrderNew(Order<Open>),
     OrderCancelled(Order<Cancelled>),
+    OrdersOpen(Vec<Order<Open>>),
     Trade(Trade),
+    ExecutionError(ExecutionError),
 }
 
 #[derive(Debug)]
