@@ -141,6 +141,7 @@ impl Accounts {
                 );
             }
             (None, Some(order_duplicate_cid)) => {
+                // Todo: This would be regular if we subscribe to WS AccountEvents & return HTTP orders
                 warn!(
                     exchange = ?order.exchange,
                     cid = ?order.cid,

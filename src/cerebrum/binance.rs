@@ -104,7 +104,7 @@ impl ExchangeClient for Binance {
         todo!()
     }
 
-    async fn cancel_order_all(&self) -> () {
+    async fn cancel_orders_all(&self) -> () {
         todo!()
     }
 }
