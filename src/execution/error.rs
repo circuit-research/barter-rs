@@ -5,4 +5,7 @@ use thiserror::Error;
 pub enum ExecutionError {
     #[error("Failed to build due to missing attribute: {0}")]
     BuilderIncomplete(&'static str),
+
+    /// Todo: Split this up
+    Generic,
 }

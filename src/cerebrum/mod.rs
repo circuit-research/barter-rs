@@ -3,7 +3,7 @@ use self::{
     command::Commander,
     consume::Consumer,
     event::{AccountEvent, EventFeed},
-    exchange::ExchangeRequest,
+    exchange::ExecutionRequest,
     initialise::Initialiser,
     market::MarketUpdater,
     order::{Algorithmic, Manual, OrderGenerator},
@@ -82,7 +82,7 @@ pub mod binance;
 pub struct Components<Strategy> {
     feed: EventFeed,
     accounts: Accounts,
-    exchange_tx: mpsc::UnboundedSender<ExchangeRequest>,
+    exchange_tx: mpsc::UnboundedSender<ExecutionRequest>,
     strategy: Strategy,
     audit_tx: ()
 }
@@ -102,7 +102,7 @@ pub struct Cerebrum<State, Strategy> {
     pub state: State,
     pub feed: EventFeed,
     pub accounts: Accounts,
-    pub request_tx: mpsc::UnboundedSender<ExchangeRequest>,
+    pub request_tx: mpsc::UnboundedSender<ExecutionRequest>,
     pub strategy: Strategy,
     pub audit_tx: (),
 }
@@ -173,7 +173,7 @@ where
 pub struct EngineBuilder<Strategy> {
     pub feed: Option<EventFeed>,
     pub accounts: Option<Accounts>,
-    pub exchange_tx: Option<mpsc::UnboundedSender<ExchangeRequest>>,
+    pub exchange_tx: Option<mpsc::UnboundedSender<ExecutionRequest>>,
     pub strategy: Option<Strategy>,
     pub audit_tx: Option<()>,
 }
@@ -203,7 +203,7 @@ impl<Strategy> EngineBuilder<Strategy> {
         }
     }
 
-    pub fn exchange_tx(self, value: mpsc::UnboundedSender<ExchangeRequest>) -> Self {
+    pub fn exchange_tx(self, value: mpsc::UnboundedSender<ExecutionRequest>) -> Self {
         Self {
             exchange_tx: Some(value),
             ..self
@@ -247,7 +247,7 @@ mod tests {
         cerebrum::{
             account::{Account, Accounts, Position},
             Engine,
-            event::{Balance, Command, Event, EventFeed}, exchange::ExchangeRequest,
+            event::{Balance, Command, Event, EventFeed}, exchange::ExecutionRequest,
             order::{Order, RequestCancel, RequestOpen},
             strategy,
             strategy::IndicatorUpdater,
@@ -398,23 +398,23 @@ mod tests {
 
     // Todo:
 //  - Will change when we setup the ExchangeClients properly, likely needs Vec<Instrument>
-    fn init_account_feed(event_tx: mpsc::UnboundedSender<Event>, mut exchange_rx: mpsc::UnboundedReceiver<ExchangeRequest>) {
+    fn init_account_feed(event_tx: mpsc::UnboundedSender<Event>, mut exchange_rx: mpsc::UnboundedReceiver<ExecutionRequest>) {
         tokio::task::spawn(async move {
             while let Some(request) = exchange_rx.recv().await {
                 match request {
-                    ExchangeRequest::FetchOpenOrders(_)=> {
+                    ExecutionRequest::FetchOrdersOpen(_)=> {
                         // Todo:
                     }
-                    ExchangeRequest::FetchBalances(_) => {
+                    ExecutionRequest::FetchBalances(_) => {
                         // Todo:
                     }
-                    ExchangeRequest::OpenOrders(_) => {
+                    ExecutionRequest::OpenOrders(_) => {
                         // Todo:
                     }
-                    ExchangeRequest::CancelOrders(_) => {
+                    ExecutionRequest::CancelOrders(_) => {
                         // Todo:
                     }
-                    ExchangeRequest::CancelOrdersAll(_) => {
+                    ExecutionRequest::CancelOrdersAll(_) => {
                         // Todo:
                     }
                 }
