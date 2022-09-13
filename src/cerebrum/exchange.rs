@@ -11,6 +11,7 @@ use tracing::info;
 use async_trait::async_trait;
 use uuid::Uuid;
 use crate::cerebrum::event::SymbolBalance;
+use crate::cerebrum::order::Cancelled;
 use crate::execution::error::ExecutionError;
 
 /// Responsibilities:
@@ -19,6 +20,7 @@ use crate::execution::error::ExecutionError;
 pub trait ExchangeClient {
     type Config;
 
+    // Todo: Returns structs used in AccountEventKind should ideally contain exchange_timestamp
     async fn init(config: Self::Config, event_tx: mpsc::UnboundedSender<Event>) -> Self;
     async fn consume(&self, event_tx: mpsc::UnboundedSender<Event>) -> Result<(), ExecutionError>;
 
@@ -27,13 +29,16 @@ pub trait ExchangeClient {
     async fn fetch_orders_open(&self) -> Result<Vec<Order<Open>>, ExecutionError>;
     async fn fetch_balances(&self) -> Result<Vec<SymbolBalance>, ExecutionError>;
 
-    async fn open_order(&self) -> ();
-    async fn open_order_batch(&self) -> ();
+    // This would just return some OrderIds... need to optimise
+    async fn open_orders(&self, open_requests: Vec<Order<RequestOpen>>) -> Result<Vec<Order<Open>>, ExecutionError>;
+    // async fn open_order(&self) -> ();
+    // async fn open_order_batch(&self) -> ();
 
-    async fn cancel_order_by_id(&self) -> ();
-    async fn cancel_order_by_instrument(&self) -> ();
-    async fn cancel_order_by_batch(&self) -> ();
-    async fn cancel_order_all(&self) -> ();
+    async fn cancel_orders(&self, cancel_requests: Vec<Order<RequestCancel>>) -> Result<Vec<Order<Cancelled>>, ExecutionError>;
+    // async fn cancel_order_by_id(&self) -> ();
+    // async fn cancel_order_by_instrument(&self) -> ();
+    // async fn cancel_order_by_batch(&self) -> ();
+    async fn cancel_orders_all(&self) -> Result<Vec<Order<Cancelled>>, ExecutionError>;
 }
 
 /// Responsibilities:
@@ -139,25 +144,27 @@ where
     }
 }
 
+
+// Todo: If we pass tuple (Exchange, Order<Request>), the OrderRequest should maybe be diff that doesn't include Exchange
 #[derive(Debug)]
 pub enum ExecutionRequest {
     // Check ExchangeClient status
     // ClientStatus(Vec<Exchange>),
 
     // Fetch Account State
-    FetchOrdersOpen(Vec<Exchange>),
     FetchBalances(Vec<Exchange>),
+    FetchOrdersOpen(Vec<Exchange>),
 
     // Open Orders
     // OpenOrder(Order<RequestOpen>),
     // OpenOrderBatch(Order<Vec<RequestOpen>>),
-    OpenOrders(Vec<Order<RequestOpen>>),
+    OpenOrders(Vec<(Exchange, Vec<Order<RequestOpen>>)>),
 
     // Cancel Orders
     // CancelOrderById,
     // CancelOrderByInstrument,
     // CancelOrderByBatch,
-    CancelOrders(Vec<Order<RequestCancel>>),
+    CancelOrders(Vec<(Exchange, Vec<Order<RequestCancel>>)>),
     CancelOrdersAll(Vec<Exchange>),
 }
 
