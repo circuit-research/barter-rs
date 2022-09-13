@@ -1,7 +1,7 @@
 use super::{
     Engine, Cerebrum,
     consume::Consumer,
-    exchange::ExchangeRequest
+    exchange::ExecutionRequest
 };
 use barter_integration::model::{Exchange, Side};
 use crate::cerebrum::exchange::ClientOrderId;
@@ -23,14 +23,14 @@ where
         // Send CancelOrders Command to ExchangeClient
         if let Some(cancel_requests) = self.strategy.generate_cancels() {
             self.request_tx
-                .send(ExchangeRequest::CancelOrders(cancel_requests))
+                .send(ExecutionRequest::CancelOrders(cancel_requests))
                 .unwrap()
         }
 
         // Send OpenOrders Command to ExchangeClient
         if let Some(open_requests) = self.strategy.generate_orders() {
             self.request_tx
-                .send(ExchangeRequest::OpenOrders(open_requests))
+                .send(ExecutionRequest::OpenOrders(open_requests))
                 .unwrap();
         }
 

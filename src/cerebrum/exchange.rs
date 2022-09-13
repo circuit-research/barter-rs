@@ -1,6 +1,6 @@
 use super::{
     event::Event,
-    order::{Order, RequestCancel, RequestOpen},
+    order::{Order, Open, RequestCancel, RequestOpen},
 };
 use barter_integration::model::{Exchange, Instrument};
 use std::{
@@ -10,6 +10,8 @@ use tokio::sync::mpsc;
 use tracing::info;
 use async_trait::async_trait;
 use uuid::Uuid;
+use crate::cerebrum::event::SymbolBalance;
+use crate::execution::error::ExecutionError;
 
 /// Responsibilities:
 /// - Determines best way to action an [`ExchangeRequest`] given the constraints of the exchange.
@@ -18,12 +20,12 @@ pub trait ExchangeClient {
     type Config;
 
     async fn init(config: Self::Config, event_tx: mpsc::UnboundedSender<Event>) -> Self;
-    async fn consume(&self, event_tx: mpsc::UnboundedSender<Event>) -> Result<(), ()>;
+    async fn consume(&self, event_tx: mpsc::UnboundedSender<Event>) -> Result<(), ExecutionError>;
 
     fn connection_status(&self) -> ClientStatus;
 
-    async fn fetch_orders_open(&self) -> ();
-    async fn fetch_balances(&self) -> ();
+    async fn fetch_orders_open(&self) -> Result<Vec<Order<Open>>, ExecutionError>;
+    async fn fetch_balances(&self) -> Result<Vec<SymbolBalance>, ExecutionError>;
 
     async fn open_order(&self) -> ();
     async fn open_order_batch(&self) -> ();
@@ -43,7 +45,7 @@ where
     Client: ExchangeClient,
 {
     clients: HashMap<Exchange, Client>,
-    request_rx: mpsc::UnboundedReceiver<ExchangeRequest>,
+    request_rx: mpsc::UnboundedReceiver<ExecutionRequest>,
     event_tx: mpsc::UnboundedSender<Event>,
 }
 
@@ -108,21 +110,21 @@ where
             info!(payload = ?request, "received ExchangeRequest");
 
 
-            // Action ExchangeRequest
+            // Action ExecutionRequest
             match request {
-                ExchangeRequest::FetchOpenOrders(exchanges) => {
+                ExecutionRequest::FetchOrdersOpen(exchanges) => {
 
                 }
-                ExchangeRequest::FetchBalances(exchanges) => {
+                ExecutionRequest::FetchBalances(exchanges) => {
 
                 }
-                ExchangeRequest::OpenOrders(open_requests) => {
+                ExecutionRequest::OpenOrders(open_requests) => {
 
                 }
-                ExchangeRequest::CancelOrders(cancel_requests) => {
+                ExecutionRequest::CancelOrders(cancel_requests) => {
 
                 }
-                ExchangeRequest::CancelOrdersAll(exchanges) => {
+                ExecutionRequest::CancelOrdersAll(exchanges) => {
 
                 }
             }
@@ -138,12 +140,12 @@ where
 }
 
 #[derive(Debug)]
-pub enum ExchangeRequest {
+pub enum ExecutionRequest {
     // Check ExchangeClient status
     // ClientStatus(Vec<Exchange>),
 
     // Fetch Account State
-    FetchOpenOrders(Vec<Exchange>),
+    FetchOrdersOpen(Vec<Exchange>),
     FetchBalances(Vec<Exchange>),
 
     // Open Orders
