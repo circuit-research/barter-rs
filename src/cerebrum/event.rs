@@ -15,21 +15,36 @@ pub enum Event {
 
 #[derive(Debug)]
 pub struct AccountEvent {
-    pub exchange_time: DateTime<Utc>,
     pub received_time: DateTime<Utc>,
     pub exchange: Exchange,
     pub kind: AccountEventKind,
 }
 
+// #[derive(Debug)]
+// pub struct AccountEvent {
+//     pub exchange_time: DateTime<Utc>,
+//     pub received_time: DateTime<Utc>,
+//     pub exchange: Exchange,
+//     pub kind: AccountEventKind,
+// }
+
+// Do I want separate variants for singular & multi like Balance vs Balances?
 #[derive(Debug)]
 pub enum AccountEventKind {
+    // Client Return
     ConnectionStatus(ClientStatus),
-    Balance(SymbolBalance),
+
+    // HTTP Return
     Balances(Vec<SymbolBalance>),
-    OrderNew(Order<Open>),
-    OrderCancelled(Order<Cancelled>),
+    OrdersNew(Vec<Order<Open>>),
+    OrdersCancelled(Vec<Order<Cancelled>>),
     OrdersOpen(Vec<Order<Open>>),
+
+    // WebSocket Return
+    Balance(SymbolBalance),
     Trade(Trade),
+
+    // Error
     ExecutionError(ExecutionError),
 }
 
