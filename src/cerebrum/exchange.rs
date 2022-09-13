@@ -20,7 +20,7 @@ pub trait ExchangeClient {
     async fn init(config: Self::Config, event_tx: mpsc::UnboundedSender<Event>) -> Self;
     async fn consume(&self, event_tx: mpsc::UnboundedSender<Event>) -> Result<(), ()>;
 
-    fn connection_status(&self) -> ConnectionStatus;
+    fn connection_status(&self) -> ClientStatus;
 
     async fn fetch_orders_open(&self) -> ();
     async fn fetch_balances(&self) -> ();
@@ -96,6 +96,7 @@ where
     ///  - Should be run on it's own OS thread.
     ///  - This may live in Barter... ExchangeClient impls would live here. Order would be in Barter!
     ///  - Just use HTTP for trading for the time being...
+    ///  - May need to run enum ExchangeEvent { request, ConnectionStatus } in order to re-spawn clients! -> state machine like Cerebrum!
     pub fn run(mut self) {
         loop {
             // Receive next ExchangeRequest
@@ -105,6 +106,7 @@ where
                 Err(mpsc::error::TryRecvError::Disconnected) => panic!("todo"),
             };
             info!(payload = ?request, "received ExchangeRequest");
+
 
             // Action ExchangeRequest
             match request {
@@ -137,8 +139,8 @@ where
 
 #[derive(Debug)]
 pub enum ExchangeRequest {
-    // Check connection status
-    // ConnectionStatus(Vec<Exchange>),
+    // Check ExchangeClient status
+    // ClientStatus(Vec<Exchange>),
 
     // Fetch Account State
     FetchOpenOrders(Vec<Exchange>),
@@ -161,7 +163,7 @@ pub enum ExchangeRequest {
 pub struct ClientOrderId(pub Uuid);
 
 #[derive(Clone, Copy, Debug)]
-pub enum ConnectionStatus {
+pub enum ClientStatus {
     Connected,
     CancelOnly,
     Disconnected,

@@ -6,7 +6,7 @@ use hmac::Hmac;
 use tokio::sync::mpsc::UnboundedSender;
 use super::{
     event::Event,
-    exchange::{ConnectionStatus, ExchangeClient}
+    exchange::{ClientStatus, ExchangeClient}
 };
 use serde::{Deserialize, Serialize};
 
@@ -33,7 +33,7 @@ pub struct Binance {
     instruments_map: HashMap<BinancePair, Instrument>,
     api_key: String,
     hmac: Hmac<sha2::Sha256>,
-    status: ConnectionStatus,
+    status: ClientStatus,
     http_client: reqwest::Client,
 }
 
@@ -50,7 +50,7 @@ impl ExchangeClient for Binance {
             instruments_map: Self::instruments_map(config.instruments),
             api_key: config.api_key,
             hmac: config.hmac,
-            status: ConnectionStatus::Connected,
+            status: ClientStatus::Connected,
             http_client: reqwest::Client::new()
         }
     }
@@ -59,7 +59,7 @@ impl ExchangeClient for Binance {
         todo!()
     }
 
-    fn connection_status(&self) -> ConnectionStatus {
+    fn connection_status(&self) -> ClientStatus {
         self.status
     }
 
