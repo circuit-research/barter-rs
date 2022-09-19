@@ -4,7 +4,7 @@ use chrono::Utc;
 use futures::StreamExt;
 use tokio::sync::mpsc;
 use crate::cerebrum::event::{AccountEvent, AccountEventKind, Event};
-use crate::cerebrum::exchange::{ExchangeClient, ExecutionRequest};
+use crate::cerebrum::exchange::{ExecutionClient, ExecutionRequest};
 use crate::cerebrum::order::{Open, Order, RequestCancel, RequestOpen};
 use crate::execution::error::ExecutionError;
 use crate::execution::request::RequestFeed;
@@ -13,7 +13,6 @@ pub mod error;
 mod request;
 
 // Todo:
-//  - Use RequestFeed? -> Would be a good way to determine if we've terminated
 //  - Do I want a ClientStatus_rx? Maybe later. Ignore for now.
 //  - ExecutionManager?
 
@@ -24,7 +23,7 @@ pub enum ExecutionEngine<Client> {
 
 impl<Client> ExecutionEngine<Client>
 where
-    Client: ExchangeClient
+    Client: ExecutionClient
 {
     pub fn run(mut self) {
         'execution: loop {
@@ -71,7 +70,7 @@ pub struct Terminated;
 
 impl<Client> ExchangeManager<RequestConsumer, Client>
 where
-    Client: ExchangeClient
+    Client: ExecutionClient
 {
     // Todo:
     //  - Handling these requests would likely make new states

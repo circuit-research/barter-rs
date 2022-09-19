@@ -11,6 +11,7 @@ pub trait IndicatorUpdater {
 // Todo:
 //  - Name clashes with OrderGenerator<State>
 //  - Do I want two seperate states, one for generate_cancel(), one for generate_orders()?
+
 pub trait OrderGenerator {
     fn generate_cancels(&self) -> Option<Vec<Order<RequestCancel>>>;
     fn generate_orders(&self) -> Option<Vec<Order<RequestOpen>>>;
@@ -23,3 +24,7 @@ pub trait OrderGenerator {
 // - Based on analysis, generates optional Order<Request>
 // - Allocates Order<Request>
 // - Decides Order<Request> OrderKind
+
+// Todo  Strategy needs a view into accounts, but it should not do the account keeping
+// perhaps Impl Strategy for Cerebrum...?
+// perhaps struct Strategy<IndicatorUpdater, OrderGenerator>
