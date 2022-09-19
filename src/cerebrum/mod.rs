@@ -39,32 +39,18 @@ pub mod binance;
 //     '--> exchange_tx / execution_tx / account_tx (or similar) to send Requests to exchange
 //  - Make input & output feed / tx / rx names more distinct eg/ InputEventFeed, or InputFeed...
 //     ... output_tx / audit_tx / state_tx etc
-//  - EngineState naming to be decided, but be consistent with casing / verb usage etc.
 //  - Consumer state can likely transition to Initialiser while we wait for responses from exchange?
 //  - Feed needs some work to be more like MarketFeed w/ Feed struct? etc.
-//  - Account or Portfolio? Change name of AccountUpdater and AccountEvent if we do change, etc.
-//  - Should the Strategy have control over 'Account'?
 //  - Engine will also have control of spawning the execution clients, presumably...?
 //   '--> Perhaps Engine will need to be a struct and enum Engine -> CerebrumState/TradingState/Trader
 //   '--> Perhaps the builder could do the Init of Cerebrum in a blocking way
-//  - Strategy could use Associated types?
-//  - Do I want Accounts to have Positions? Also MarketUpdater would call self.accounts.update_positions()
-//   '--> is it relevant now we hold every Instrument?
-//   '--> How to track PnL? What is a Position?
-//  - AccountUpdater no longer updates Positions & Statistics, but just Indicators -> this may change back?
-//   '--> If we only update Indicators, would this become SignalUpdater?
-//  - Send Events to the audit_tx eg/ update_from_market { event_tx.send(market).unwrap() }
 //  - Is it valid to have a SymbolBalance, or do we need the idea of SymbolInstrumentKindBalance?
 //  - Update Balances can be more efficient since we know what Markets we trade at the start
 //   '--> Change update_balance() .expect() for error! like open order logic
 //   '--> Can ignore anything which contains_key() returns None etc
-//  - More efficient to use Accounts(Vec<(Exchange, Account)) (or have Exchange inside Account?
-//    '--> Benchmark, but probably faster for since people won't use many exchanges at once?
 //  - Work out how to do fees for trade, and add Liquidity field?
 //  - Impl display for MarketEvent, AccountEvent, Command
 //  - Could make Account generic to give it functionality to generate appropriate Cid?
-//  - Ensure I am happy with log levels after dev. eg/ update_order_from_cancel logs at worn if we
-//    cancel in flight order
 //  - self.accounts.update_orders_from_open(&order); is taking ref & cloning - only makes sense if
 //    we are using audit_tx... double check this later
 //  - Should I have the concept & tracking of orders_in_flight_cancel? Along with associated State InFlightCancel?
@@ -78,6 +64,10 @@ pub mod binance;
 //  - Make as much stuff reference as possible, eg/ Accounts could use reference Accounts<'a>(HashMap<&'a Symbol...)
 //  - Make ExchangePortal generic so an Engine can be select with a higher performance portal for
 //    a single Exchange only :) Same goes for all other multi-exchange functionality...
+//  - InFlight cancels, but would need to generate CancelClientOrderId
+//   '--> OrderManager { fn add_new_in_flight_cancels(&mut self, exchange: &Exchange, in_flight: Vec<Order<InFlightCancel>>);
+//   '--> Account { cancels_in_flight: HashMap<ClientOrderId, Order<InFlightCancel>> }
+//  - Should I be generating more errors...? eg/ OrderManager trait
 
 pub struct Components<Strategy> {
     feed: EventFeed,
@@ -97,6 +87,8 @@ pub enum Engine<Strategy> {
     Commander(Cerebrum<Commander, Strategy>),
     Terminated(Cerebrum<Terminated, Strategy>),
 }
+
+struct Terminated;
 
 pub struct Cerebrum<State, Strategy> {
     pub state: State,

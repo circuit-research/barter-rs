@@ -6,7 +6,7 @@ use hmac::Hmac;
 use tokio::sync::mpsc::UnboundedSender;
 use super::{
     event::Event,
-    exchange::{ClientStatus, ExchangeClient}
+    exchange::{ClientStatus, ExecutionClient}
 };
 use serde::{Deserialize, Serialize};
 
@@ -38,7 +38,7 @@ pub struct Binance {
 }
 
 #[async_trait]
-impl ExchangeClient for Binance {
+impl ExecutionClient for Binance {
     type Config = Config;
 
     async fn init(config: Self::Config, event_tx: UnboundedSender<Event>) -> Self {

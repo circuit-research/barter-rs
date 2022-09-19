@@ -12,7 +12,7 @@ use tracing::{debug, error, info, warn};
 
 
 /// AccountUpdater can transition to:
-///  a=) Consumer
+///  a) Consumer
 pub struct AccountUpdater;
 
 impl<Strategy> Cerebrum<AccountUpdater, Strategy> {

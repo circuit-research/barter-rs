@@ -1,6 +1,6 @@
 use super::{
     event::{Balance, Event},
-    exchange::{ExchangeClient, ClientOrderId, ClientStatus},
+    exchange::{ExecutionClient, ClientOrderId, ClientStatus},
     order::{Order, Open},
 };
 use barter_integration::model::{Instrument, Symbol};
@@ -31,7 +31,7 @@ pub struct SimulatedExchange {
 }
 
 #[async_trait]
-impl ExchangeClient for SimulatedExchange {
+impl ExecutionClient for SimulatedExchange {
     type Config = Config;
 
     async fn init(config: Self::Config, event_tx: UnboundedSender<Event>) -> Self {
