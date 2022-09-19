@@ -17,14 +17,14 @@ use crate::execution::error::ExecutionError;
 /// Responsibilities:
 /// - Determines best way to action an [`ExchangeRequest`] given the constraints of the exchange.
 #[async_trait]
-pub trait ExchangeClient {
+pub trait ExecutionClient {
     type Config;
 
     // Todo: Returns structs used in AccountEventKind should ideally contain exchange_timestamp
     async fn init(config: Self::Config, event_tx: mpsc::UnboundedSender<Event>) -> Self;
     async fn consume(&self, event_tx: mpsc::UnboundedSender<Event>) -> Result<(), ExecutionError>;
 
-    fn connection_status(&self) -> ClientStatus;
+    fn client_health(&self) -> ClientHealth;
 
     async fn fetch_orders_open(&self) -> Result<Vec<Order<Open>>, ExecutionError>;
     async fn fetch_balances(&self) -> Result<Vec<SymbolBalance>, ExecutionError>;
@@ -47,7 +47,7 @@ pub trait ExchangeClient {
 /// - Map InternalClientOrderId to exchange ClientOrderId.
 pub struct ExchangePortal<Client>
 where
-    Client: ExchangeClient,
+    Client: ExecutionClient,
 {
     clients: HashMap<Exchange, Client>,
     request_rx: mpsc::UnboundedReceiver<ExecutionRequest>,
@@ -56,7 +56,7 @@ where
 
 impl<Client> ExchangePortal<Client>
 where
-    Client: ExchangeClient,
+    Client: ExecutionClient,
 {
 
     pub fn init(
@@ -170,6 +170,11 @@ pub enum ExecutionRequest {
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct ClientOrderId(pub Uuid);
+
+pub struct ClientHealth {
+    status: ClientStatus,
+    latency_avg: ()
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum ClientStatus {
