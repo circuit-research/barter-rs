@@ -18,8 +18,8 @@ tracing-subscriber = { version = "0.3.15", features = ["env-filter", "json"]}
 
 [dependencies]
 # Barter Ecosystem
-barter-data = "0.5.5"
 barter-integration = "0.3.4"
+barter-data = { path = "../barter-data-rs" }
 barter-execution = { path = "../barter-execution-rs" }
 
 # Logging
