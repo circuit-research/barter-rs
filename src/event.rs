@@ -1,4 +1,5 @@
 use barter_data::model::MarketEvent;
+use barter_execution::model::AccountEvent;
 
 #[derive(Debug, Clone)]
 pub enum Event {
