@@ -749,7 +749,11 @@ pub mod tests {
             // candle.close +100.0 on input_position.current_symbol_price
             DataKind::Candle(ref mut candle) => candle.close = 200.0,
             DataKind::Trade(ref mut trade) => trade.price = 200.0,
+<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
+=======
+            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
+>>>>>>> master
         };
 
         let result_pos_update = portfolio
@@ -797,7 +801,11 @@ pub mod tests {
             // -50.0 on input_position.current_symbol_price
             DataKind::Candle(ref mut candle) => candle.close = 50.0,
             DataKind::Trade(ref mut trade) => trade.price = 50.0,
+<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
+=======
+            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
+>>>>>>> master
         };
 
         let result_pos_update = portfolio
@@ -842,7 +850,11 @@ pub mod tests {
             // -50.0 on input_position.current_symbol_price
             DataKind::Candle(ref mut candle) => candle.close = 50.0,
             DataKind::Trade(ref mut trade) => trade.price = 50.0,
+<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
+=======
+            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
+>>>>>>> master
         };
 
         let result_pos_update = portfolio
@@ -887,7 +899,11 @@ pub mod tests {
             // +100.0 on input_position.current_symbol_price
             DataKind::Candle(ref mut candle) => candle.close = 200.0,
             DataKind::Trade(ref mut trade) => trade.price = 200.0,
+<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
+=======
+            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
+>>>>>>> master
         };
 
         let result_pos_update = portfolio
