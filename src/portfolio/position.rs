@@ -151,11 +151,7 @@ impl PositionUpdater for Position {
         let close = match &market.kind {
             DataKind::Trade(trade) => trade.price,
             DataKind::Candle(candle) => candle.close,
-<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
-=======
-            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
->>>>>>> master
         };
 
         self.meta.update_time = market.exchange_time;
@@ -764,11 +760,7 @@ mod tests {
             // +100.0 higher than current_symbol_price
             DataKind::Candle(ref mut candle) => candle.close = 200.0,
             DataKind::Trade(ref mut trade) => trade.price = 200.0,
-<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
-=======
-            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
->>>>>>> master
         };
 
         // Update Position
@@ -788,11 +780,7 @@ mod tests {
         let close = match &input_market.kind {
             DataKind::Trade(trade) => trade.price,
             DataKind::Candle(candle) => candle.close,
-<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
-=======
-            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
->>>>>>> master
         };
         assert_eq!(position.current_symbol_price, close);
         assert_eq!(
@@ -829,11 +817,7 @@ mod tests {
             // -50.0 lower than current_symbol_price
             DataKind::Candle(ref mut candle) => candle.close = 50.0,
             DataKind::Trade(ref mut trade) => trade.price = 50.0,
-<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
-=======
-            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
->>>>>>> master
         };
 
         // Update Position
@@ -853,11 +837,7 @@ mod tests {
         let close = match &input_market.kind {
             DataKind::Trade(trade) => trade.price,
             DataKind::Candle(candle) => candle.close,
-<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
-=======
-            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
->>>>>>> master
         };
         assert_eq!(position.current_symbol_price, close);
         assert_eq!(
@@ -894,11 +874,7 @@ mod tests {
             // -50.0 lower than current_symbol_price
             DataKind::Candle(ref mut candle) => candle.close = 50.0,
             DataKind::Trade(ref mut trade) => trade.price = 50.0,
-<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
-=======
-            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
->>>>>>> master
         };
 
         // Update Position
@@ -918,11 +894,7 @@ mod tests {
         let close = match &input_market.kind {
             DataKind::Trade(trade) => trade.price,
             DataKind::Candle(candle) => candle.close,
-<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
-=======
-            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
->>>>>>> master
         };
         assert_eq!(position.current_symbol_price, close);
         assert_eq!(
@@ -959,11 +931,7 @@ mod tests {
             // +100.0 higher than current_symbol_price
             DataKind::Candle(ref mut candle) => candle.close = 200.0,
             DataKind::Trade(ref mut trade) => trade.price = 200.0,
-<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
-=======
-            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
->>>>>>> master
         };
 
         // Update Position
@@ -983,11 +951,7 @@ mod tests {
         let close = match &input_market.kind {
             DataKind::Trade(trade) => trade.price,
             DataKind::Candle(candle) => candle.close,
-<<<<<<< HEAD
             DataKind::OrderBook(_) => todo!(),
-=======
-            DataKind::OrderBook(_) => panic!("OrderBooks not supported"),
->>>>>>> master
         };
         assert_eq!(position.current_symbol_price, close);
         assert_eq!(
