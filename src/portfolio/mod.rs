@@ -38,22 +38,22 @@ impl AccountUpdater for Account {
 }
 
 pub trait Updater {
+    type Components;
     type Event;
 
+    fn new(components: Self::Components) -> Self;
     fn update(&mut self, event: Self::Event);
 }
 
 impl Updater for Account {
+    type Components = ();
     type Event = MarketEvent;
+
+    fn new(components: Self::Components) -> Self {
+        todo!()
+    }
 
     fn update(&mut self, event: Self::Event) {
         todo!()
     }
-}
-
-struct SomeTest<T>
-where
-    T: Updater<Event = MarketEvent> + Updater<Event = AccountEvent>
-{
-    account: T
 }
