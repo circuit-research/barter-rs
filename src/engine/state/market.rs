@@ -5,6 +5,7 @@ use super::{
 };
 use crate::engine::{Engine, Trader};
 use crate::portfolio::{AccountUpdater, MarketUpdater};
+use crate::strategy::OrderGenerator;
 
 /// [`UpdateFromMarket`] can only transition to:
 /// a) [`GenerateOrder<Algorithmic>`](GenerateOrder)
@@ -17,7 +18,7 @@ where
 
 impl<Strategy, Portfolio> Trader<Strategy, UpdateFromMarket<Portfolio>>
 where
-    Strategy: MarketUpdater,
+    Strategy: MarketUpdater + OrderGenerator,
     Portfolio: MarketUpdater + AccountUpdater,
 {
     pub fn update(mut self, market: MarketEvent) -> Engine<Strategy, Portfolio> {
@@ -35,12 +36,12 @@ where
         self.state.portfolio.update_from_market(&market);
 
         // Transition Engine state to GenerateOrder<Algorithmic>
-        Engine::GenerateOrder(Trader::from(self))
+        Engine::GenerateOrderAlgorithmic(Trader::from(self))
     }
 }
 
 /// a) UpdateFromMarket -> GenerateOrder<Algorithmic>
-impl<Strategy, Portfolio> From<Trader<Strategy, UpdateFromMarket<Portfolio> >> for Trader<Strategy, GenerateOrder<Algorithmic>>
+impl<Strategy, Portfolio> From<Trader<Strategy, UpdateFromMarket<Portfolio> >> for Trader<Strategy, GenerateOrder<Portfolio, Algorithmic>>
 where
     Portfolio: MarketUpdater
 {
@@ -49,7 +50,10 @@ where
             feed: trader.feed,
             strategy: trader.strategy,
             execution_tx: trader.execution_tx,
-            state: GenerateOrder { state: Algorithmic },
+            state: GenerateOrder {
+                portfolio: trader.state.portfolio,
+                kind: Algorithmic,
+            },
         }
     }
 }

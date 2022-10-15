@@ -17,12 +17,16 @@ use crate::{
 };
 use barter_integration::model::{Exchange, Instrument};
 use barter_data::model::MarketEvent;
-use barter_execution::model::AccountEvent;
+use barter_execution::model::{
+    AccountEvent,
+    order::{Order, RequestOpen}
+};
 use std::{
     collections::HashMap,
     marker::PhantomData
 };
 use tokio::sync::mpsc;
+use crate::strategy::OrderGenerator;
 
 pub mod state;
 pub mod error;
@@ -32,17 +36,19 @@ pub mod error;
 //  - May benefit from having 'EngineBuilder' build all components of the system
 //   '--> ie/ spawns all threads & tasks for barter-data, execution, etc
 //    --> "Engine" could become "TraderStates" or similar
+//  - Move MarketUpdater from somewhere general to both Strategy & Portfolio
 
 
 pub enum Engine<Strategy, Portfolio>
 where
-    Portfolio: MarketUpdater + AccountUpdater
+    Strategy: OrderGenerator,
+    Portfolio: MarketUpdater + AccountUpdater,
 {
     Initialise(Trader<Strategy, Initialise<Portfolio>>),
     Consume(Trader<Strategy, Consume<Portfolio>>),
     UpdateFromMarket((Trader<Strategy, UpdateFromMarket<Portfolio>>, MarketEvent)),
-    GenerateOrder(Trader<Strategy, GenerateOrder<Algorithmic>>),
-    GenerateOrderManual((Trader<Strategy, GenerateOrder<Manual>>, ())),
+    GenerateOrderAlgorithmic(Trader<Strategy, GenerateOrder<Portfolio, Algorithmic>>),
+    GenerateOrderManual((Trader<Strategy, GenerateOrder<Portfolio, Manual>>, Order<RequestOpen>)),
     UpdateFromAccount((Trader<Strategy, UpdateFromAccount<Portfolio>>, AccountEvent)),
     ExecuteCommand((Trader<Strategy, ExecuteCommand<Portfolio>>, Command)),
     Terminate(Trader<Strategy, Terminate>)
@@ -57,7 +63,7 @@ pub struct Trader<Strategy, State> {
 
 impl<Strategy, Portfolio> Engine<Strategy, Portfolio>
 where
-    Strategy: MarketUpdater,
+    Strategy: MarketUpdater + OrderGenerator,
     Portfolio: Initialiser<Output = Portfolio> + MarketUpdater + AccountUpdater
 {
     /// Builder to construct [`Engine`] instances.
@@ -88,8 +94,8 @@ where
             Self::UpdateFromMarket((trader, market)) => {
                 trader.update(market)
             },
-            Self::GenerateOrder(_trader) => {
-                unimplemented!()
+            Self::GenerateOrderAlgorithmic(trader) => {
+                trader.generate_order_requests()
             }
             Self::GenerateOrderManual((_trader, _order)) => {
                 unimplemented!()
@@ -119,6 +125,7 @@ pub struct EngineBuilder<Strategy, Portfolio> {
 
 impl<Strategy, Portfolio> EngineBuilder<Strategy, Portfolio>
 where
+    Strategy: OrderGenerator,
     Portfolio: MarketUpdater + AccountUpdater,
 {
     fn new() -> Self {

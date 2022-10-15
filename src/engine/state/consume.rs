@@ -11,6 +11,7 @@ use crate::{
     },
     portfolio::{AccountUpdater, MarketUpdater}
 };
+use crate::strategy::OrderGenerator;
 
 /// [`Consume`] can transition to one of:
 /// a) [`UpdateFromMarket`]
@@ -24,6 +25,7 @@ pub struct Consume<Portfolio> {
 
 impl<Strategy, Portfolio> Trader<Strategy, Consume<Portfolio>>
 where
+    Strategy: OrderGenerator,
     Portfolio: MarketUpdater + AccountUpdater,
 {
     pub fn next_event(mut self) -> Engine<Strategy, Portfolio> {
