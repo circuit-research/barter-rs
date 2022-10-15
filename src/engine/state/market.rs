@@ -20,13 +20,12 @@ where
     Portfolio: MarketUpdater + AccountUpdater,
 {
     pub fn update(mut self, market: MarketEvent) -> Engine<Strategy, Portfolio> {
-        self.strategy.update(&market);
-        self.state.portfolio.update(&market);
+        // Update Strategy
+        self.strategy.update_from_market(&market);
 
+        // Update Positions
+        self.state.portfolio.update_from_market(&market);
 
-        // Todo:
-        //  - Update Positions
-        //  - Update Indicators
         Engine::GenerateOrder(Trader::from(self))
     }
 }
