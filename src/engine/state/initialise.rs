@@ -38,6 +38,7 @@ where
         match Portfolio::init(instruments, &execution_tx, &mut feed) {
             // a) Initialise -> Consume
             Ok(portfolio) => {
+                // Transition Engine state to Consume
                 Engine::Consume(Trader {
                     feed,
                     strategy,
@@ -49,6 +50,7 @@ where
             }
             // b) Initialise -> Terminate
             Err(error) => {
+                // Transition Engine state to Terminate
                 Engine::Terminate(Trader {
                     feed,
                     strategy,
