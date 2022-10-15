@@ -19,8 +19,8 @@ use crate::{
 #[derive(Debug)]
 pub struct Consume;
 
-impl Trader<Consume> {
-    pub fn next_event(mut self) -> Engine {
+impl<Strategy, Execution> Trader<Strategy, Execution, Consume> {
+    pub fn next_event(mut self) -> Engine<Strategy, Execution> {
         // Consume next Event
         match self.feed.next() {
             Feed::Next(Event::Market(market)) => {
@@ -40,38 +40,44 @@ impl Trader<Consume> {
 }
 
 /// a) Consume -> UpdateFromMarket
-impl From<Trader<Consume>> for Trader<UpdateFromMarket> {
-    fn from(trader: Trader<Consume>) -> Self {
+impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<Strategy, Execution, UpdateFromMarket> {
+    fn from(trader: Trader<Strategy, Execution, Consume>) -> Self {
         Self {
-            state: UpdateFromMarket,
             feed: trader.feed,
+            strategy: trader.strategy,
+            execution: trader.execution,
+            state: UpdateFromMarket,
         }
     }
 }
 
 /// b) Consume -> UpdateFromAccount
-impl From<Trader<Consume>> for Trader<UpdateFromAccount> {
-    fn from(trader: Trader<Consume>) -> Self {
+impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<Strategy, Execution, UpdateFromAccount> {
+    fn from(trader: Trader<Strategy, Execution, Consume>) -> Self {
         Self {
-            state: UpdateFromAccount,
             feed: trader.feed,
+            strategy: trader.strategy,
+            execution: trader.execution,
+            state: UpdateFromAccount,
         }
     }
 }
 
 /// c) Consume -> ExecuteCommand
-impl From<Trader<Consume>> for Trader<ExecuteCommand> {
-    fn from(trader: Trader<Consume>) -> Self {
+impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<Strategy, Execution, ExecuteCommand> {
+    fn from(trader: Trader<Strategy, Execution, Consume>) -> Self {
         Self {
-            state: ExecuteCommand,
             feed: trader.feed,
+            strategy: trader.strategy,
+            execution: trader.execution,
+            state: ExecuteCommand,
         }
     }
 }
 
 /// d) Consume -> Terminate
-impl From<Trader<Consume>> for Trader<Terminate> {
-    fn from(trader: Trader<Consume>) -> Self {
+impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<Strategy, Execution, Terminate> {
+    fn from(trader: Trader<Strategy, Execution, Consume>) -> Self {
         todo!()
         // Self {
         //     state: Terminated {
