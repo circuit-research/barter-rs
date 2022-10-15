@@ -1,5 +1,6 @@
-use crate::data::{Feed, MarketGenerator};
+use crate::data::MarketGenerator;
 use barter_data::model::MarketEvent;
+use crate::event::Feed;
 
 /// Historical [`Feed`] of [`MarketEvent`]s.
 #[derive(Debug)]

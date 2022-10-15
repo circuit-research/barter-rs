@@ -1,13 +1,21 @@
 use barter_data::model::MarketEvent;
 use barter_execution::model::AccountEvent;
 use tokio::sync::mpsc;
+use serde::{Deserialize, Serialize};
+
+
+/// Communicates the state of the [`Feed`] as well as the next event.
+#[derive(Clone, Eq, PartialEq, PartialOrd, Debug, Deserialize, Serialize)]
+pub enum Feed<Event> {
+    Next(Event),
+    Finished,
+}
 
 #[derive(Debug, Clone)]
 pub enum Event {
     Market(MarketEvent),
     Account(AccountEvent),
     Command(Command),
-    Terminated,
 }
 
 #[derive(Debug, Clone)]
@@ -27,13 +35,15 @@ impl EventFeed {
         Self { event_rx }
     }
 
-    pub fn next(&mut self) -> Event {
+    pub fn next(&mut self) -> Feed<Event> {
         loop {
             match self.event_rx.try_recv() {
-                Ok(event) => break event,
+                Ok(event) => break Feed::Next(event),
                 Err(mpsc::error::TryRecvError::Empty) => continue,
-                Err(mpsc::error::TryRecvError::Disconnected) => Event::Terminated,
+                Err(mpsc::error::TryRecvError::Disconnected) => break Feed::Finished,
             }
         }
     }
 }
+
+
