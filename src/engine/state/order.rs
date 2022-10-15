@@ -1,6 +1,6 @@
 
-
-pub struct OrderGenerator<State> {
+/// Todo:
+pub struct GenerateOrder<State> {
     pub state: State,
 }
 pub struct Algorithmic;
