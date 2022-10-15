@@ -34,6 +34,7 @@ where
         // Update Positions
         self.state.portfolio.update_from_market(&market);
 
+        // Transition Engine state to GenerateOrder<Algorithmic>
         Engine::GenerateOrder(Trader::from(self))
     }
 }

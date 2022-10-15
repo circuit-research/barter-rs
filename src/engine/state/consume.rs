@@ -27,18 +27,22 @@ where
     Portfolio: MarketUpdater + AccountUpdater,
 {
     pub fn next_event(mut self) -> Engine<Strategy, Portfolio> {
-        // Consume next Event
+        // Consume next Event & transition to the required state
         match self.feed.next() {
             Feed::Next(Event::Market(market)) => {
+                // Transition Engine state to UpdateFromMarket
                 Engine::UpdateFromMarket((Trader::from(self), market))
             }
             Feed::Next(Event::Account(account)) => {
+                // Transition Engine state to UpdateFromAccount
                 Engine::UpdateFromAccount((Trader::from(self), account))
             }
             Feed::Next(Event::Command(command)) => {
+                // Transition Engine state to ExecuteCommand
                 Engine::ExecuteCommand((Trader::from(self), command))
             }
             Feed::Finished => {
+                // Transition Engine state to Terminate
                 Engine::Terminate(Trader::from(self))
             }
         }

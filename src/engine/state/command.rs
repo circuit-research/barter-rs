@@ -28,18 +28,26 @@ where
         match command {
             Command::FetchOpenPositions => {
                 // Todo: Fetch & send (where?)
+
+                // Transition Engine state to Consume
                 Engine::Consume(Trader::from(self))
             }
             Command::ExitPosition => {
                 // Todo: Add relevant metadata for the Position to exit
+
+                // Transition Engine state to GenerateOrder<Manual>
                 Engine::GenerateOrderManual((Trader::from(self), ()))
             }
             Command::ExitAllPositions => {
                 // Todo: Add relevant metadata for the Position to exit
+
+                // Transition Engine state to GenerateOrder<Manual>
                 Engine::GenerateOrderManual((Trader::from(self), ()))
             }
             Command::Terminate => {
                 // Todo: Do pre-termination tasks
+
+                // Transition Engine state to Terminate
                 Engine::Terminate(Trader::from(self))
             }
         }

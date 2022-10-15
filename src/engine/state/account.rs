@@ -25,8 +25,7 @@ where
         // Update Portfolio
         self.state.portfolio.update_from_account(&account);
 
-
-
+        // Transition Engine state to Consume
         Engine::Consume(Trader::from(self))
     }
 }
