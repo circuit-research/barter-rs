@@ -1,6 +1,7 @@
 use self::{
     error::EngineError,
     state::{
+        initialise::Initialise,
         account::UpdateFromAccount,
         command::ExecuteCommand,
         consume::Consume,
@@ -22,8 +23,6 @@ use std::{
     marker::PhantomData
 };
 use tokio::sync::mpsc;
-use state::initialise::Initialise;
-
 
 pub mod state;
 pub mod error;
