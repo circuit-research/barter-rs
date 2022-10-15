@@ -1,27 +1,27 @@
 use barter_data::model::MarketEvent;
 use super::{
-    order::{OrderGenerator, Algorithmic},
+    order::{GenerateOrder, Algorithmic},
 };
 use crate::engine::{Engine, Trader};
 
-/// [`MarketUpdater`] can only transition to:
-/// a) [`OrderGenerator<Algorithmic>`](OrderGenerator)
-pub struct MarketUpdater;
+/// [`UpdateFromMarket`] can only transition to:
+/// a) [`GenerateOrder<Algorithmic>`](GenerateOrder)
+pub struct UpdateFromMarket;
 
-impl Trader<MarketUpdater> {
+impl Trader<UpdateFromMarket> {
     pub fn update(self, _market: MarketEvent) -> Engine {
         // Todo:
         //  - Update Positions
         //  - Update Indicators
-        Engine::OrderGenerator(Trader::from(self))
+        Engine::GenerateOrder(Trader::from(self))
     }
 }
 
-/// a) MarketUpdater -> OrderGenerator<Algorithmic>
-impl From<Trader<MarketUpdater>> for Trader<OrderGenerator<Algorithmic>> {
-    fn from(trader: Trader<MarketUpdater>) -> Self {
+/// a) UpdateFromMarket -> GenerateOrder<Algorithmic>
+impl From<Trader<UpdateFromMarket>> for Trader<GenerateOrder<Algorithmic>> {
+    fn from(trader: Trader<UpdateFromMarket>) -> Self {
         Self {
-            state: OrderGenerator { state: Algorithmic },
+            state: GenerateOrder { state: Algorithmic },
             feed: trader.feed
         }
     }

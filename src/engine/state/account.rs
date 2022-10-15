@@ -1,15 +1,15 @@
 use super::{
-    consumer::Consumer,
+    consume::Consume,
 };
 use crate::engine::{Engine, Trader};
 use barter_execution::model::{AccountEvent, AccountEventKind};
 use tracing::info;
 
-/// [`AccountUpdater`] can only transition to:
-/// a) [`Consumer`]
-pub struct AccountUpdater;
+/// [`UpdateFromAccount`] can only transition to:
+/// a) [`Consume`]
+pub struct UpdateFromAccount;
 
-impl Trader<AccountUpdater> {
+impl Trader<UpdateFromAccount> {
     pub fn update(self, account: AccountEvent) -> Engine {
         match account.kind {
             AccountEventKind::OrdersOpen(open) => {
@@ -32,15 +32,15 @@ impl Trader<AccountUpdater> {
             }
         }
 
-        Engine::Consumer(Trader::from(self))
+        Engine::Consume(Trader::from(self))
     }
 }
 
-/// a) AccountUpdater -> Consumer
-impl From<Trader<AccountUpdater>> for Trader<Consumer> {
-    fn from(trader: Trader<AccountUpdater>) -> Self {
+/// a) UpdateFromAccount -> Consume
+impl From<Trader<UpdateFromAccount>> for Trader<Consume> {
+    fn from(trader: Trader<UpdateFromAccount>) -> Self {
         Self {
-            state: Consumer,
+            state: Consume,
             feed: trader.feed
         }
     }
