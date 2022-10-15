@@ -86,24 +86,36 @@ where
     pub fn next(self) -> Self {
         match self {
             Self::Initialise(trader) => {
+                // Can transition to one of:
+                // Consume | Terminate
                 trader.init()
             }
             Self::Consume(trader) => {
+                // Transitions to one of:
+                // UpdateFromMarket | UpdateFromAccount | ExecuteCommand | Terminate
                 trader.next_event()
             },
             Self::UpdateFromMarket((trader, market)) => {
+                // Always transitions to: GenerateOrder<Algorithmic>
                 trader.update(market)
             },
             Self::GenerateOrderAlgorithmic(trader) => {
+                // Transitions to one of:
+                // Consume | Terminate
                 trader.generate_order_requests()
             }
             Self::GenerateOrderManual((_trader, _order)) => {
+                // Transitions to one of:
+                // Consume | Terminate
                 unimplemented!()
             },
             Self::UpdateFromAccount((trader, account)) => {
+                // Always transitions to: Consume
                 trader.update(account)
             }
             Self::ExecuteCommand((trader, command)) => {
+                // Transitions to one of:
+                // Consume | GenerateOrder<Manual> | Terminate
                 trader.execute_manual_command(command)
             }
             Self::Terminate(trader) => {
