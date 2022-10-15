@@ -12,7 +12,7 @@ use self::{
 };
 use crate::{
     event::{Command, EventFeed},
-    portfolio::{AccountUpdater, MarketUpdater},
+    portfolio::{Initialiser, AccountUpdater, MarketUpdater},
     execution::ExecutionRequest,
 };
 use barter_integration::model::{Exchange, Instrument};
@@ -58,7 +58,7 @@ pub struct Trader<Strategy, State> {
 
 impl<Strategy, Portfolio> Engine<Strategy, Portfolio>
 where
-    Portfolio: MarketUpdater + AccountUpdater
+    Portfolio: Initialiser<Output = Portfolio> + MarketUpdater + AccountUpdater
 {
     /// Builder to construct [`Engine`] instances.
     pub fn builder() -> EngineBuilder<Strategy, Portfolio> {
