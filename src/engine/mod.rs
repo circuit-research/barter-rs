@@ -1,40 +1,49 @@
 use state::{
-    consumer::Consumer,
-    market::MarketUpdater,
-    order::{OrderGenerator, Algorithmic, Manual},
-    account::AccountUpdater,
-    commander::Commander,
-    terminated::Terminated,
+    Initialise,
+    consume::Consume,
+    market::UpdateFromMarket,
+    order::{GenerateOrder, Algorithmic, Manual},
+    account::UpdateFromAccount,
+    command::ExecuteCommand,
+    terminate::Terminate,
 };
 use crate::event::{Command, EventFeed};
 use barter_data::model::MarketEvent;
 use barter_execution::model::AccountEvent;
 
 pub mod state;
+pub mod error;
+
+// Todo:
+//  - Should AccountEvent contain an exchange_timestamp?
+//  - Trader should contain ExecutionManager generic
+//   '--> simple case would be an ExecutionClient, complex would be mpsc::Sender<EXecutionReq>
 
 pub struct Components {
     feed: EventFeed,
 }
 
 pub enum Engine {
-    Consumer(Trader<Consumer>),
-    MarketUpdater((Trader<MarketUpdater>, MarketEvent)),
-    OrderGenerator(Trader<OrderGenerator<Algorithmic>>),
-    OrderGeneratorManual((Trader<OrderGenerator<Manual>>, ())),
-    AccountUpdater((Trader<AccountUpdater>, AccountEvent)),
-    Commander((Trader<Commander>, Command)),
-    Terminated(Trader<Terminated>)
+    Initialise(Trader<Initialise>),
+    Consume(Trader<Consume>),
+    UpdateFromMarket((Trader<UpdateFromMarket>, MarketEvent)),
+    GenerateOrder(Trader<GenerateOrder<Algorithmic>>),
+    GenerateOrderManual((Trader<GenerateOrder<Manual>>, ())),
+    UpdateFromAccount((Trader<UpdateFromAccount>, AccountEvent)),
+    ExecuteCommand((Trader<ExecuteCommand>, Command)),
+    Terminate(Trader<Terminate>)
 }
 
 pub struct Trader<State> {
     pub state: State,
     pub feed: EventFeed,
+
 }
 
 impl Engine {
     pub fn new(components: Components) -> Self {
-        Self::Consumer(Trader {
-            state: Consumer,
+        Self::Initialise(Trader {
+            state: Initialise,
             feed: components.feed,
         })
     }
@@ -44,7 +53,7 @@ impl Engine {
             // Transition to the next trading state
             self = self.next();
 
-            if let Self::Terminated(_) = self {
+            if let Self::Terminate(_) = self {
                 // Todo: Print trading session results & persist
                 break 'trading
             }
@@ -53,26 +62,29 @@ impl Engine {
 
     pub fn next(mut self) -> Self {
         match self {
-            Self::Consumer(trader) => {
+            Self::Initialise(trader) => {
+                todo!()
+            }
+            Self::Consume(trader) => {
                 trader.next_event()
             },
-            Self::MarketUpdater((trader, market)) => {
+            Self::UpdateFromMarket((trader, market)) => {
                 trader.update(market)
             },
-            Self::OrderGenerator(trader) => {
+            Self::GenerateOrder(trader) => {
                 todo!()
             }
-            Self::OrderGeneratorManual((trader, meta)) => {
+            Self::GenerateOrderManual((trader, meta)) => {
                 todo!()
             },
-            Self::AccountUpdater((trader, account)) => {
+            Self::UpdateFromAccount((trader, account)) => {
                 trader.update(account)
             }
-            Self::Commander((trader, command)) => {
+            Self::ExecuteCommand((trader, command)) => {
                 trader.execute_manual_command(command)
             }
-            Self::Terminated(trader) => {
-                Self::Terminated(trader)
+            Self::Terminate(trader) => {
+                Self::Terminate(trader)
             }
         }
     }

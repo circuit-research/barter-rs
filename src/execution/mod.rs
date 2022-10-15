@@ -11,7 +11,7 @@
 // use barter_execution::model::{AccountEvent, AccountEventKind};
 // use barter_execution::model::order::{Order, RequestCancel, RequestOpen};
 //
-// pub mod request;
+pub mod request;
 //
 // // Todo:
 // //  - Do I want a ClientStatus_rx? Maybe later. Ignore for now.

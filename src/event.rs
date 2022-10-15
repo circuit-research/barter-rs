@@ -20,10 +20,10 @@ pub enum Event {
 
 #[derive(Debug, Clone)]
 pub enum Command {
-    Terminate,
     FetchOpenPositions,
     ExitPosition,
     ExitAllPositions,
+    Terminate,
 }
 
 pub struct EventFeed {
