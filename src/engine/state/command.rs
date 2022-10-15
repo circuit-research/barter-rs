@@ -47,7 +47,6 @@ where
                 unimplemented!()
             }
             Command::Terminate => {
-                // Todo: Do pre-termination tasks
                 // Transition Engine state to Terminate
                 Engine::Terminate(Trader::from(self))
             }
