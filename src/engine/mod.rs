@@ -1,19 +1,18 @@
 use self::{
     error::EngineError,
     state::{
-        Initialise,
-        consume::Consume,
-        market::UpdateFromMarket,
-        order::{GenerateOrder, Algorithmic, Manual},
         account::UpdateFromAccount,
         command::ExecuteCommand,
+        consume::Consume,
+        market::UpdateFromMarket,
+        order::{Algorithmic, GenerateOrder, Manual},
         terminate::Terminate,
     }
 };
 use crate::{
     event::{Command, EventFeed},
-    portfolio::{Initialiser, AccountUpdater, MarketUpdater},
     execution::ExecutionRequest,
+    portfolio::{AccountUpdater, Initialiser, MarketUpdater},
 };
 use barter_integration::model::{Exchange, Instrument};
 use barter_data::model::MarketEvent;
@@ -23,6 +22,7 @@ use std::{
     marker::PhantomData
 };
 use tokio::sync::mpsc;
+use state::initialise::Initialise;
 
 
 pub mod state;
