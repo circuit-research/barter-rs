@@ -16,9 +16,14 @@ where
 
 impl<Strategy, Portfolio> Trader<Strategy, UpdateFromMarket<Portfolio>>
 where
+    Strategy: MarketUpdater,
     Portfolio: MarketUpdater + AccountUpdater,
 {
-    pub fn update(self, _market: MarketEvent) -> Engine<Strategy, Portfolio> {
+    pub fn update(mut self, market: MarketEvent) -> Engine<Strategy, Portfolio> {
+        self.strategy.update(&market);
+        self.state.portfolio.update(&market);
+
+
         // Todo:
         //  - Update Positions
         //  - Update Indicators
