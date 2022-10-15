@@ -5,12 +5,11 @@ use super::{
     terminated::Terminated,
 };
 use crate::{
-    event::{Feed, Event, Command},
+    event::{Feed, Event},
     engine::{
         Engine, Trader,
     }
 };
-use barter_data::model::MarketEvent;
 
 /// [`Consumer`] can transition to one of:
 /// a) [`MarketUpdater`]
