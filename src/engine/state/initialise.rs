@@ -6,14 +6,14 @@ use crate::{
     engine::{
         Engine, Trader,
     },
-    portfolio::{AccountUpdater, Initialiser, MarketUpdater}
+    portfolio::{AccountUpdater, Initialiser, MarketUpdater},
+    strategy::OrderGenerator,
 };
 use barter_integration::model::{Exchange, Instrument};
 use std::{
     collections::HashMap,
     marker::PhantomData,
 };
-use crate::strategy::OrderGenerator;
 
 /// [`Initialise`] can transition to one of:
 /// a) [`Consumer`]
@@ -58,6 +58,7 @@ where
                     strategy,
                     execution_tx,
                     state: Terminate {
+                        portfolio: None,
                         reason: Err(error)
                     }
                 })

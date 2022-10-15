@@ -14,6 +14,7 @@ use crate::{
     event::{Command, EventFeed},
     execution::ExecutionRequest,
     portfolio::{AccountUpdater, Initialiser, MarketUpdater},
+    strategy::OrderGenerator,
 };
 use barter_integration::model::{Exchange, Instrument};
 use barter_data::model::MarketEvent;
@@ -26,7 +27,6 @@ use std::{
     marker::PhantomData
 };
 use tokio::sync::mpsc;
-use crate::strategy::OrderGenerator;
 
 pub mod state;
 pub mod error;
@@ -51,7 +51,7 @@ where
     GenerateOrderManual((Trader<Strategy, GenerateOrder<Portfolio, Manual>>, Order<RequestOpen>)),
     UpdateFromAccount((Trader<Strategy, UpdateFromAccount<Portfolio>>, AccountEvent)),
     ExecuteCommand((Trader<Strategy, ExecuteCommand<Portfolio>>, Command)),
-    Terminate(Trader<Strategy, Terminate>)
+    Terminate(Trader<Strategy, Terminate<Portfolio>>)
 }
 
 pub struct Trader<Strategy, State> {

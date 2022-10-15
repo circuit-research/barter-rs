@@ -50,22 +50,16 @@ impl AccountUpdater for Account {
     fn update_from_account(&mut self, account: &AccountEvent) {
         match &account.kind {
             AccountEventKind::OrdersOpen(open) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?open, "received Event");
             }
             AccountEventKind::OrdersNew(new) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?new, "received Event");
             }
             AccountEventKind::OrdersCancelled(cancelled) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?cancelled, "received Event");
             }
             AccountEventKind::Balance(balance) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?balance, "received Event");
             }
             AccountEventKind::Balances(balances) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?balances, "received Event");
             }
             AccountEventKind::Trade(trade) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?trade, "received Event");
             }
         }
     }

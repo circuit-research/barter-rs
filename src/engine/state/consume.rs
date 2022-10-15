@@ -9,9 +9,9 @@ use crate::{
     engine::{
         Engine, Trader,
     },
-    portfolio::{AccountUpdater, MarketUpdater}
+    portfolio::{AccountUpdater, MarketUpdater},
+    strategy::OrderGenerator
 };
-use crate::strategy::OrderGenerator;
 
 /// [`Consume`] can transition to one of:
 /// a) [`UpdateFromMarket`]
@@ -100,13 +100,14 @@ impl<Strategy, Portfolio> From<Trader<Strategy, Consume<Portfolio>>> for Trader<
 }
 
 /// d) Consume -> Terminate
-impl<Strategy, Portfolio> From<Trader<Strategy, Consume<Portfolio>>> for Trader<Strategy, Terminate> {
+impl<Strategy, Portfolio> From<Trader<Strategy, Consume<Portfolio>>> for Trader<Strategy, Terminate<Portfolio>> {
     fn from(trader: Trader<Strategy, Consume<Portfolio>>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
             execution_tx: trader.execution_tx,
             state: Terminate {
+                portfolio: Some(trader.state.portfolio),
                 reason: Ok("EventFeed Feed::Finished")
             }
         }
