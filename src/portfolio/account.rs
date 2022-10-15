@@ -1,6 +1,6 @@
 use super::{
     AccountUpdater, MarketUpdater,
-    position::Position,
+    position::{Position, Open as PosOpen, Closed as PosClosed},
 };
 use barter_integration::model::{Exchange, Instrument, Symbol};
 use barter_data::model::MarketEvent;
@@ -11,12 +11,15 @@ use barter_execution::model::{
 };
 use std::collections::HashMap;
 
+// Todo: Do I want to make a directory for Account have and account/balance, order, position ?
+
 pub struct Account {
     pub exchange: Exchange,
     pub balances: HashMap<Symbol, Balance>,
-    pub positions: HashMap<Instrument, Position>,
     pub orders_in_flight: HashMap<ClientOrderId, Order<InFlight>>,
     pub orders_open: HashMap<ClientOrderId, Order<Open>>,
+    pub positions: HashMap<Instrument, Position<PosOpen>>,
+    pub positions_closed: HashMap<Instrument, Position<PosClosed>>
 }
 
 impl MarketUpdater for Account {
