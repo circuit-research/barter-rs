@@ -15,8 +15,8 @@ use tracing::info;
 /// c) [`Terminate`]
 pub struct ExecuteCommand;
 
-impl<Strategy, Execution> Trader<Strategy, Execution, ExecuteCommand> {
-    pub fn execute_manual_command(self, command: Command) -> Engine<Strategy, Execution> {
+impl<Strategy> Trader<Strategy, ExecuteCommand> {
+    pub fn execute_manual_command(self, command: Command) -> Engine<Strategy> {
         match command {
             Command::FetchOpenPositions => {
                 info!(kind = "Command", payload = "FetchOpenPositions", "received Event");
@@ -45,8 +45,8 @@ impl<Strategy, Execution> Trader<Strategy, Execution, ExecuteCommand> {
 
 
 /// a) Commander -> Consume
-impl<Strategy, Execution> From<Trader<Strategy, Execution, ExecuteCommand>> for Trader<Strategy, Execution, Consume> {
-    fn from(trader: Trader<Strategy, Execution, ExecuteCommand>) -> Self {
+impl<Strategy> From<Trader<Strategy, ExecuteCommand>> for Trader<Strategy, Consume> {
+    fn from(trader: Trader<Strategy, ExecuteCommand>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
@@ -57,8 +57,8 @@ impl<Strategy, Execution> From<Trader<Strategy, Execution, ExecuteCommand>> for 
 }
 
 /// b) ExecuteCommand -> GenerateOrder<Manual>
-impl<Strategy, Execution> From<Trader<Strategy, Execution, ExecuteCommand>> for Trader<Strategy, Execution, GenerateOrder<Manual>> {
-    fn from(trader: Trader<Strategy, Execution, ExecuteCommand>) -> Self {
+impl<Strategy> From<Trader<Strategy, ExecuteCommand>> for Trader<Strategy, GenerateOrder<Manual>> {
+    fn from(trader: Trader<Strategy, ExecuteCommand>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
@@ -69,8 +69,8 @@ impl<Strategy, Execution> From<Trader<Strategy, Execution, ExecuteCommand>> for 
 }
 
 /// c) Commander -> Terminated
-impl<Strategy, Execution> From<Trader<Strategy, Execution, ExecuteCommand>> for Trader<Strategy, Execution, Terminate> {
-    fn from(trader: Trader<Strategy, Execution, ExecuteCommand>) -> Self {
+impl<Strategy> From<Trader<Strategy, ExecuteCommand>> for Trader<Strategy, Terminate> {
+    fn from(trader: Trader<Strategy, ExecuteCommand>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,

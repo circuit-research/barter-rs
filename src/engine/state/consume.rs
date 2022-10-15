@@ -19,8 +19,8 @@ use crate::{
 #[derive(Debug)]
 pub struct Consume;
 
-impl<Strategy, Execution> Trader<Strategy, Execution, Consume> {
-    pub fn next_event(mut self) -> Engine<Strategy, Execution> {
+impl<Strategy> Trader<Strategy, Consume> {
+    pub fn next_event(mut self) -> Engine<Strategy> {
         // Consume next Event
         match self.feed.next() {
             Feed::Next(Event::Market(market)) => {
@@ -40,8 +40,8 @@ impl<Strategy, Execution> Trader<Strategy, Execution, Consume> {
 }
 
 /// a) Consume -> UpdateFromMarket
-impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<Strategy, Execution, UpdateFromMarket> {
-    fn from(trader: Trader<Strategy, Execution, Consume>) -> Self {
+impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, UpdateFromMarket> {
+    fn from(trader: Trader<Strategy, Consume>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
@@ -52,8 +52,8 @@ impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<
 }
 
 /// b) Consume -> UpdateFromAccount
-impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<Strategy, Execution, UpdateFromAccount> {
-    fn from(trader: Trader<Strategy, Execution, Consume>) -> Self {
+impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, UpdateFromAccount> {
+    fn from(trader: Trader<Strategy, Consume>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
@@ -64,8 +64,8 @@ impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<
 }
 
 /// c) Consume -> ExecuteCommand
-impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<Strategy, Execution, ExecuteCommand> {
-    fn from(trader: Trader<Strategy, Execution, Consume>) -> Self {
+impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, ExecuteCommand> {
+    fn from(trader: Trader<Strategy, Consume>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
@@ -76,8 +76,8 @@ impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<
 }
 
 /// d) Consume -> Terminate
-impl<Strategy, Execution> From<Trader<Strategy, Execution, Consume>> for Trader<Strategy, Execution, Terminate> {
-    fn from(trader: Trader<Strategy, Execution, Consume>) -> Self {
+impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, Terminate> {
+    fn from(trader: Trader<Strategy, Consume>) -> Self {
         todo!()
         // Self {
         //     state: Terminated {

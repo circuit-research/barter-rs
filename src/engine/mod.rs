@@ -1,3 +1,4 @@
+use tokio::sync::mpsc;
 use self::{
     error::EngineError,
     state::{
@@ -15,6 +16,7 @@ use crate::{
 };
 use barter_data::model::MarketEvent;
 use barter_execution::model::AccountEvent;
+use crate::execution::request::ExecutionRequest;
 
 pub mod state;
 pub mod error;
@@ -24,33 +26,27 @@ pub mod error;
 //  - Trader should contain ExecutionManager generic
 //   '--> simple case would be an ExecutionClient, complex would be mpsc::Sender<ExecutionRequest>
 
-pub struct Components<Strategy, Execution> {
-    pub feed: EventFeed,
-    pub strategy: Strategy,
-    pub execution: Execution,
+pub enum Engine<Strategy> {
+    Initialise(Trader<Strategy, Initialise>),
+    Consume(Trader<Strategy, Consume>),
+    UpdateFromMarket((Trader<Strategy, UpdateFromMarket>, MarketEvent)),
+    GenerateOrder(Trader<Strategy, GenerateOrder<Algorithmic>>),
+    GenerateOrderManual((Trader<Strategy, GenerateOrder<Manual>>, ())),
+    UpdateFromAccount((Trader<Strategy, UpdateFromAccount>, AccountEvent)),
+    ExecuteCommand((Trader<Strategy, ExecuteCommand>, Command)),
+    Terminate(Trader<Strategy, Terminate>)
 }
 
-pub enum Engine<Strategy, Execution> {
-    Initialise(Trader<Strategy, Execution, Initialise>),
-    Consume(Trader<Strategy, Execution, Consume>),
-    UpdateFromMarket((Trader<Strategy, Execution, UpdateFromMarket>, MarketEvent)),
-    GenerateOrder(Trader<Strategy, Execution, GenerateOrder<Algorithmic>>),
-    GenerateOrderManual((Trader<Strategy, Execution, GenerateOrder<Manual>>, ())),
-    UpdateFromAccount((Trader<Strategy, Execution, UpdateFromAccount>, AccountEvent)),
-    ExecuteCommand((Trader<Strategy, Execution, ExecuteCommand>, Command)),
-    Terminate(Trader<Strategy, Execution, Terminate>)
-}
-
-pub struct Trader<Strategy, Execution, State> {
+pub struct Trader<Strategy, State> {
     pub feed: EventFeed,
     pub strategy: Strategy,
-    pub execution: Execution,
+    pub execution_tx: mpsc::UnboundedSender<ExecutionRequest>,
     pub state: State,
 }
 
-impl<Strategy, Execution> Engine<Strategy, Execution> {
+impl<Strategy> Engine<Strategy> {
     /// Builder to construct [`Engine`] instances.
-    pub fn builder() -> EngineBuilder<Strategy, Execution> {
+    pub fn builder() -> EngineBuilder<Strategy> {
         EngineBuilder::new()
     }
 
@@ -98,18 +94,18 @@ impl<Strategy, Execution> Engine<Strategy, Execution> {
 
 /// Builder to construct [`Engine`] instances.
 #[derive(Default)]
-pub struct EngineBuilder<Strategy, Execution> {
+pub struct EngineBuilder<Strategy> {
     pub feed: Option<EventFeed>,
     pub strategy: Option<Strategy>,
-    pub execution: Option<Execution>,
+    pub execution_tx: Option<mpsc::UnboundedSender<ExecutionRequest>>,
 }
 
-impl<Strategy, Execution> EngineBuilder<Strategy, Execution> {
+impl<Strategy> EngineBuilder<Strategy> {
     fn new() -> Self {
         Self {
             feed: None,
             strategy: None,
-            execution: None,
+            execution_tx: None,
         }
     }
 
@@ -127,18 +123,18 @@ impl<Strategy, Execution> EngineBuilder<Strategy, Execution> {
         }
     }
 
-    pub fn execution(self, value: Execution) -> Self {
+    pub fn execution_tx(self, value: mpsc::UnboundedSender<ExecutionRequest>) -> Self {
         Self {
-            execution: Some(value),
+            execution_tx: Some(value),
             ..self
         }
     }
 
-    pub fn build(self) -> Result<Engine<Strategy, Execution>, EngineError> {
+    pub fn build(self) -> Result<Engine<Strategy>, EngineError> {
         Ok(Engine::Initialise(Trader {
             feed: self.feed.ok_or(EngineError::BuilderIncomplete("feed"))?,
             strategy: self.strategy.ok_or(EngineError::BuilderIncomplete("strategy"))?,
-            execution: self.execution.ok_or(EngineError::BuilderIncomplete("execution"))?,
+            execution_tx: self.execution_tx.ok_or(EngineError::BuilderIncomplete("execution_tx"))?,
             state: Initialise
         }))
     }
