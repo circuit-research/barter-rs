@@ -23,7 +23,7 @@ impl<Strategy> From<Trader<Strategy, UpdateFromMarket>> for Trader<Strategy, Gen
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
-            execution: trader.execution,
+            execution_tx: trader.execution_tx,
             state: GenerateOrder { state: Algorithmic },
         }
     }

@@ -16,15 +16,13 @@ use crate::{
 };
 use barter_data::model::MarketEvent;
 use barter_execution::model::AccountEvent;
-use crate::execution::request::ExecutionRequest;
+use crate::execution::ExecutionRequest;
 
 pub mod state;
 pub mod error;
 
 // Todo:
 //  - Should AccountEvent contain an exchange_timestamp?
-//  - Trader should contain ExecutionManager generic
-//   '--> simple case would be an ExecutionClient, complex would be mpsc::Sender<ExecutionRequest>
 
 pub enum Engine<Strategy> {
     Initialise(Trader<Strategy, Initialise>),
@@ -62,7 +60,7 @@ impl<Strategy> Engine<Strategy> {
         }
     }
 
-    pub fn next(mut self) -> Self {
+    pub fn next(self) -> Self {
         match self {
             Self::Initialise(trader) => {
                 trader.init()

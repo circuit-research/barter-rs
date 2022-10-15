@@ -42,7 +42,7 @@ impl<Strategy> From<Trader<Strategy, UpdateFromAccount>> for Trader<Strategy, Co
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
-            execution: trader.execution,
+            execution_tx: trader.execution_tx,
             state: Consume,
         }
     }
