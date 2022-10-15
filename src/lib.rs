@@ -1,6 +1,6 @@
 #![warn(
-    missing_debug_implementations,
-    missing_copy_implementations,
+    // missing_debug_implementations,
+    // missing_copy_implementations,
     rust_2018_idioms,
     // missing_docs
 )]
@@ -21,5 +21,5 @@
 pub mod event;
 pub mod data;
 pub mod execution;
-pub mod statistic;
+// pub mod statistic;
 pub mod engine;

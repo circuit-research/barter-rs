@@ -1,9 +1,10 @@
-use super::{error::DataError, Feed, MarketGenerator};
+use super::{error::DataError, MarketGenerator};
 use barter_data::{
     builder::Streams,
-    model::{MarketEvent, Subscription},
+    model::{MarketEvent, subscription::Subscription},
 };
 use tokio::sync::mpsc;
+use crate::event::Feed;
 
 /// Live [`Feed`] of [`MarketEvent`]s.
 #[derive(Debug)]
