@@ -51,7 +51,9 @@ impl<Strategy> From<Trader<Strategy, ExecuteCommand>> for Trader<Strategy, Consu
             feed: trader.feed,
             strategy: trader.strategy,
             execution_tx: trader.execution_tx,
-            state: Consume,
+            state: Consume {
+
+            },
         }
     }
 }
