@@ -3,6 +3,7 @@ use crate::engine::{
 };
 
 /// [`Terminate`] cannot transition to another state.
-pub struct Terminate {
+pub struct Terminate<Portfolio> {
+    pub portfolio: Option<Portfolio>,
     pub reason: Result<&'static str, EngineError>,
 }

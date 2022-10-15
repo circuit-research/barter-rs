@@ -5,11 +5,11 @@ use super::{
 };
 use crate::{
     event::Command,
-    engine::{Engine, Trader}
+    engine::{Engine, Trader},
+    portfolio::{AccountUpdater, MarketUpdater},
+    strategy::OrderGenerator,
 };
 use tracing::info;
-use crate::portfolio::{AccountUpdater, MarketUpdater};
-use crate::strategy::OrderGenerator;
 
 /// [`ExecuteCommand`] can transition to one of:
 /// a) [`Consume`]
@@ -85,13 +85,14 @@ impl<Strategy, Portfolio> From<Trader<Strategy, ExecuteCommand<Portfolio>>> for 
 }
 
 /// c) Commander -> Terminated
-impl<Strategy, Portfolio> From<Trader<Strategy, ExecuteCommand<Portfolio>>> for Trader<Strategy, Terminate> {
+impl<Strategy, Portfolio> From<Trader<Strategy, ExecuteCommand<Portfolio>>> for Trader<Strategy, Terminate<Portfolio>> {
     fn from(trader: Trader<Strategy, ExecuteCommand<Portfolio>>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
             execution_tx: trader.execution_tx,
             state: Terminate {
+                portfolio: Some(trader.state.portfolio),
                 reason: Ok("Command::Terminate")
             },
         }
