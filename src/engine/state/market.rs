@@ -1,3 +1,4 @@
+use tracing::info;
 use barter_data::model::MarketEvent;
 use super::{
     order::{GenerateOrder, Algorithmic},
@@ -20,6 +21,13 @@ where
     Portfolio: MarketUpdater + AccountUpdater,
 {
     pub fn update(mut self, market: MarketEvent) -> Engine<Strategy, Portfolio> {
+        info!(
+            exchange = ?market.exchange,
+            instrument = %market.instrument,
+            payload = ?market.kind,
+            "received MarketEvent",
+        );
+
         // Update Strategy
         self.strategy.update_from_market(&market);
 

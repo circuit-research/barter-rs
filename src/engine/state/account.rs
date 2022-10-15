@@ -19,27 +19,13 @@ impl<Strategy, Portfolio> Trader<Strategy, UpdateFromAccount<Portfolio>>
 where
     Portfolio: MarketUpdater + AccountUpdater,
 {
-    pub fn update(self, account: AccountEvent) -> Engine<Strategy, Portfolio> {
-        match account.kind {
-            AccountEventKind::OrdersOpen(open) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?open, "received Event");
-            }
-            AccountEventKind::OrdersNew(new) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?new, "received Event");
-            }
-            AccountEventKind::OrdersCancelled(cancelled) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?cancelled, "received Event");
-            }
-            AccountEventKind::Balance(balance) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?balance, "received Event");
-            }
-            AccountEventKind::Balances(balances) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?balances, "received Event");
-            }
-            AccountEventKind::Trade(trade) => {
-                info!(kind = "Account", exchange = ?account.exchange, payload = ?trade, "received Event");
-            }
-        }
+    pub fn update(mut self, account: AccountEvent) -> Engine<Strategy, Portfolio> {
+        info!(exchange = ?account.exchange, payload = ?account.kind, "received AccountEvent");
+
+        // Update Portfolio
+        self.state.portfolio.update_from_account(&account);
+
+
 
         Engine::Consume(Trader::from(self))
     }
