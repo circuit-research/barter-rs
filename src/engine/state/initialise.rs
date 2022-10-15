@@ -16,7 +16,7 @@ use std::{
 };
 
 /// [`Initialise`] can transition to one of:
-/// a) [`Consumer`]
+/// a) [`Consume`]
 /// b) [`Terminate`]
 pub struct Initialise<Portfolio> {
     pub instruments: HashMap<Exchange, Vec<Instrument>>,
