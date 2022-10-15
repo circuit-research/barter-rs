@@ -1,13 +1,18 @@
-use state::{
-    Initialise,
-    consume::Consume,
-    market::UpdateFromMarket,
-    order::{GenerateOrder, Algorithmic, Manual},
-    account::UpdateFromAccount,
-    command::ExecuteCommand,
-    terminate::Terminate,
+use self::{
+    error::EngineError,
+    state::{
+        Initialise,
+        consume::Consume,
+        market::UpdateFromMarket,
+        order::{GenerateOrder, Algorithmic, Manual},
+        account::UpdateFromAccount,
+        command::ExecuteCommand,
+        terminate::Terminate,
+    }
 };
-use crate::event::{Command, EventFeed};
+use crate::{
+    event::{Command, EventFeed}
+};
 use barter_data::model::MarketEvent;
 use barter_execution::model::AccountEvent;
 
@@ -17,35 +22,36 @@ pub mod error;
 // Todo:
 //  - Should AccountEvent contain an exchange_timestamp?
 //  - Trader should contain ExecutionManager generic
-//   '--> simple case would be an ExecutionClient, complex would be mpsc::Sender<EXecutionReq>
+//   '--> simple case would be an ExecutionClient, complex would be mpsc::Sender<ExecutionRequest>
 
-pub struct Components {
-    feed: EventFeed,
-}
-
-pub enum Engine {
-    Initialise(Trader<Initialise>),
-    Consume(Trader<Consume>),
-    UpdateFromMarket((Trader<UpdateFromMarket>, MarketEvent)),
-    GenerateOrder(Trader<GenerateOrder<Algorithmic>>),
-    GenerateOrderManual((Trader<GenerateOrder<Manual>>, ())),
-    UpdateFromAccount((Trader<UpdateFromAccount>, AccountEvent)),
-    ExecuteCommand((Trader<ExecuteCommand>, Command)),
-    Terminate(Trader<Terminate>)
-}
-
-pub struct Trader<State> {
-    pub state: State,
+pub struct Components<Strategy, Execution> {
     pub feed: EventFeed,
-
+    pub strategy: Strategy,
+    pub execution: Execution,
 }
 
-impl Engine {
-    pub fn new(components: Components) -> Self {
-        Self::Initialise(Trader {
-            state: Initialise,
-            feed: components.feed,
-        })
+pub enum Engine<Strategy, Execution> {
+    Initialise(Trader<Strategy, Execution, Initialise>),
+    Consume(Trader<Strategy, Execution, Consume>),
+    UpdateFromMarket((Trader<Strategy, Execution, UpdateFromMarket>, MarketEvent)),
+    GenerateOrder(Trader<Strategy, Execution, GenerateOrder<Algorithmic>>),
+    GenerateOrderManual((Trader<Strategy, Execution, GenerateOrder<Manual>>, ())),
+    UpdateFromAccount((Trader<Strategy, Execution, UpdateFromAccount>, AccountEvent)),
+    ExecuteCommand((Trader<Strategy, Execution, ExecuteCommand>, Command)),
+    Terminate(Trader<Strategy, Execution, Terminate>)
+}
+
+pub struct Trader<Strategy, Execution, State> {
+    pub feed: EventFeed,
+    pub strategy: Strategy,
+    pub execution: Execution,
+    pub state: State,
+}
+
+impl<Strategy, Execution> Engine<Strategy, Execution> {
+    /// Builder to construct [`Engine`] instances.
+    pub fn builder() -> EngineBuilder<Strategy, Execution> {
+        EngineBuilder::new()
     }
 
     pub fn run(mut self) {
@@ -63,7 +69,7 @@ impl Engine {
     pub fn next(mut self) -> Self {
         match self {
             Self::Initialise(trader) => {
-                todo!()
+                trader.init()
             }
             Self::Consume(trader) => {
                 trader.next_event()
@@ -87,5 +93,53 @@ impl Engine {
                 Self::Terminate(trader)
             }
         }
+    }
+}
+
+/// Builder to construct [`Engine`] instances.
+#[derive(Default)]
+pub struct EngineBuilder<Strategy, Execution> {
+    pub feed: Option<EventFeed>,
+    pub strategy: Option<Strategy>,
+    pub execution: Option<Execution>,
+}
+
+impl<Strategy, Execution> EngineBuilder<Strategy, Execution> {
+    fn new() -> Self {
+        Self {
+            feed: None,
+            strategy: None,
+            execution: None,
+        }
+    }
+
+    pub fn feed(self, value: EventFeed) -> Self {
+        Self {
+            feed: Some(value),
+            ..self
+        }
+    }
+
+    pub fn strategy(self, value: Strategy) -> Self {
+        Self {
+            strategy: Some(value),
+            ..self
+        }
+    }
+
+    pub fn execution(self, value: Execution) -> Self {
+        Self {
+            execution: Some(value),
+            ..self
+        }
+    }
+
+    pub fn build(self) -> Result<Engine<Strategy, Execution>, EngineError> {
+        Ok(Engine::Initialise(Trader {
+            feed: self.feed.ok_or(EngineError::BuilderIncomplete("feed"))?,
+            strategy: self.strategy.ok_or(EngineError::BuilderIncomplete("strategy"))?,
+            execution: self.execution.ok_or(EngineError::BuilderIncomplete("execution"))?,
+            state: Initialise
+        }))
     }
 }

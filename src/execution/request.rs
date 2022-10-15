@@ -1,6 +1,10 @@
 use crate::event::Feed;
 use tokio::sync::mpsc;
 
+pub enum ExecutionRequest {
+
+}
+
 pub struct RequestFeed {
     pub request_rx: mpsc::UnboundedReceiver<ExecutionRequest>
 }
@@ -20,3 +24,4 @@ impl RequestFeed {
         }
     }
 }
+

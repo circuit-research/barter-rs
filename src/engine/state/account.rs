@@ -9,8 +9,8 @@ use tracing::info;
 /// a) [`Consume`]
 pub struct UpdateFromAccount;
 
-impl Trader<UpdateFromAccount> {
-    pub fn update(self, account: AccountEvent) -> Engine {
+impl<Strategy, Execution> Trader<Strategy, Execution, UpdateFromAccount> {
+    pub fn update(self, account: AccountEvent) -> Engine<Strategy, Execution> {
         match account.kind {
             AccountEventKind::OrdersOpen(open) => {
                 info!(kind = "Account", exchange = ?account.exchange, payload = ?open, "received Event");
@@ -37,11 +37,13 @@ impl Trader<UpdateFromAccount> {
 }
 
 /// a) UpdateFromAccount -> Consume
-impl From<Trader<UpdateFromAccount>> for Trader<Consume> {
-    fn from(trader: Trader<UpdateFromAccount>) -> Self {
+impl<Strategy, Execution> From<Trader<Strategy, Execution, UpdateFromAccount>> for Trader<Strategy, Execution, Consume> {
+    fn from(trader: Trader<Strategy, Execution, UpdateFromAccount>) -> Self {
         Self {
+            feed: trader.feed,
+            strategy: trader.strategy,
+            execution: trader.execution,
             state: Consume,
-            feed: trader.feed
         }
     }
 }

@@ -16,16 +16,16 @@ pub mod terminate;
 /// b) [`Terminate`]
 pub struct Initialise;
 
-impl Trader<Initialise> {
-    pub fn init(self) -> Engine {
+impl<Strategy, Execution> Trader<Strategy, Execution, Initialise> {
+    pub fn init(self) -> Engine<Strategy, Execution> {
 
+        // Send ExecutionRequests
 
+        // Wait for response AccountEvents w/ timeout
 
+        // Construct Accounts
 
-
-
-
-
+        //
 
 
         Engine::Consume(Trader::from(self))
@@ -34,16 +34,16 @@ impl Trader<Initialise> {
 }
 
 /// a) Initialise -> Consume
-impl From<Trader<Initialise>> for Trader<Consume> {
-    fn from(trader: Trader<Initialise>) -> Self {
+impl<Strategy, Execution> From<Trader<Strategy, Execution, Initialise>> for Trader<Strategy, Execution, Consume> {
+    fn from(trader: Trader<Strategy, Execution, Initialise>) -> Self {
         todo!()
     }
 }
 
 
 /// b) Initialise -> Terminate
-impl From<Trader<Initialise>> for Trader<Terminate> {
-    fn from(trader: Trader<Initialise>) -> Self {
+impl<Strategy, Execution> From<Trader<Strategy, Execution, Initialise>> for Trader<Strategy, Execution, Terminate> {
+    fn from(trader: Trader<Strategy, Execution, Initialise>) -> Self {
         todo!()
         // Self {
         //     state: Terminated {
