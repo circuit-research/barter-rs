@@ -14,8 +14,7 @@ use tracing::info;
 pub struct Commander;
 
 impl Trader<Commander> {
-    pub fn execute_manual_command(mut self, command: Command) -> Engine {
-        // Action Command
+    pub fn execute_manual_command(self, command: Command) -> Engine {
         match command {
             Command::Terminate => {
                 info!(kind = "Command", payload = "Terminate", "received Event");
