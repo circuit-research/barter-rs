@@ -24,11 +24,11 @@ pub trait Initialiser {
 }
 
 pub trait MarketUpdater {
-    fn update(&mut self, market: &MarketEvent);
+    fn update_from_market(&mut self, market: &MarketEvent);
 }
 
 pub trait AccountUpdater {
-    fn update(&mut self, account: &AccountEvent);
+    fn update_from_account(&mut self, account: &AccountEvent);
 }
 
 pub struct Account {
@@ -40,18 +40,14 @@ pub struct Account {
 }
 
 impl MarketUpdater for Account {
-    fn update(&mut self, market: &MarketEvent) {
-
+    fn update_from_market(&mut self, market: &MarketEvent) {
+        todo!()
     }
 }
 
 impl AccountUpdater for Account {
-    fn update(&mut self, account: &AccountEvent) {
-
+    fn update_from_account(&mut self, account: &AccountEvent) {
+        todo!()
     }
-}
-
-pub trait Updater<Event> {
-    fn update(&mut self, event: Event);
 }
 

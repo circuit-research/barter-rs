@@ -57,6 +57,7 @@ pub struct Trader<Strategy, State> {
 
 impl<Strategy, Portfolio> Engine<Strategy, Portfolio>
 where
+    Strategy: MarketUpdater,
     Portfolio: Initialiser<Output = Portfolio> + MarketUpdater + AccountUpdater
 {
     /// Builder to construct [`Engine`] instances.
