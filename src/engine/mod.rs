@@ -88,11 +88,11 @@ where
             Self::UpdateFromMarket((trader, market)) => {
                 trader.update(market)
             },
-            Self::GenerateOrder(trader) => {
-                todo!()
+            Self::GenerateOrder(_trader) => {
+                unimplemented!()
             }
-            Self::GenerateOrderManual((trader, meta)) => {
-                todo!()
+            Self::GenerateOrderManual((_trader, _order)) => {
+                unimplemented!()
             },
             Self::UpdateFromAccount((trader, account)) => {
                 trader.update(account)
