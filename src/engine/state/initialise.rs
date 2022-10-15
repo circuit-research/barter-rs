@@ -13,6 +13,7 @@ use std::{
     collections::HashMap,
     marker::PhantomData,
 };
+use crate::strategy::OrderGenerator;
 
 /// [`Initialise`] can transition to one of:
 /// a) [`Consumer`]
@@ -24,6 +25,7 @@ pub struct Initialise<Portfolio> {
 
 impl<Strategy, Portfolio> Trader<Strategy, Initialise<Portfolio>>
 where
+    Strategy: OrderGenerator,
     Portfolio: Initialiser<Output = Portfolio> + MarketUpdater + AccountUpdater,
 {
     pub fn init(self) -> Engine<Strategy, Portfolio> {

@@ -5,6 +5,7 @@ use crate::engine::{Engine, Trader};
 use barter_execution::model::{AccountEvent, AccountEventKind};
 use tracing::info;
 use crate::portfolio::{AccountUpdater, MarketUpdater};
+use crate::strategy::OrderGenerator;
 
 /// [`UpdateFromAccount`] can only transition to:
 /// a) [`Consume`]
@@ -17,6 +18,7 @@ where
 
 impl<Strategy, Portfolio> Trader<Strategy, UpdateFromAccount<Portfolio>>
 where
+    Strategy: OrderGenerator,
     Portfolio: MarketUpdater + AccountUpdater,
 {
     pub fn update(mut self, account: AccountEvent) -> Engine<Strategy, Portfolio> {
