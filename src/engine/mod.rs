@@ -77,7 +77,7 @@ where
             self = self.next();
 
             if let Self::Terminate(_) = self {
-                // Todo: Print trading session results & persist
+                // Todo: Generate statistics trading session results & persist
                 break 'trading
             }
         }
