@@ -1,4 +1,5 @@
-use tokio::sync::mpsc;
+use std::collections::HashMap;
+use barter_integration::model::{Exchange, Instrument};
 use self::{
     error::EngineError,
     state::{
@@ -12,17 +13,23 @@ use self::{
     }
 };
 use crate::{
-    event::{Command, EventFeed}
+    event::{Command, EventFeed},
+    execution::ExecutionRequest,
 };
 use barter_data::model::MarketEvent;
 use barter_execution::model::AccountEvent;
-use crate::execution::ExecutionRequest;
+use tokio::sync::mpsc;
+
 
 pub mod state;
 pub mod error;
 
 // Todo:
 //  - Should AccountEvent contain an exchange_timestamp?
+//  - May benefit from having 'EngineBuilder' build all components of the system
+//   '--> ie/ spawns all threads & tasks for barter-data, execution, etc
+//    --> "Engine" could become "TraderStates" or similar
+
 
 pub enum Engine<Strategy> {
     Initialise(Trader<Strategy, Initialise>),
@@ -96,6 +103,7 @@ pub struct EngineBuilder<Strategy> {
     pub feed: Option<EventFeed>,
     pub strategy: Option<Strategy>,
     pub execution_tx: Option<mpsc::UnboundedSender<ExecutionRequest>>,
+    pub instruments: Option<HashMap<Exchange, Vec<Instrument>>>,
 }
 
 impl<Strategy> EngineBuilder<Strategy> {
@@ -104,6 +112,7 @@ impl<Strategy> EngineBuilder<Strategy> {
             feed: None,
             strategy: None,
             execution_tx: None,
+            instruments: None
         }
     }
 
@@ -128,12 +137,21 @@ impl<Strategy> EngineBuilder<Strategy> {
         }
     }
 
+    pub fn instruments(self, value: HashMap<Exchange, Vec<Instrument>>) -> Self {
+        Self {
+            instruments: Some(value),
+            ..self
+        }
+    }
+
     pub fn build(self) -> Result<Engine<Strategy>, EngineError> {
         Ok(Engine::Initialise(Trader {
             feed: self.feed.ok_or(EngineError::BuilderIncomplete("feed"))?,
             strategy: self.strategy.ok_or(EngineError::BuilderIncomplete("strategy"))?,
             execution_tx: self.execution_tx.ok_or(EngineError::BuilderIncomplete("execution_tx"))?,
-            state: Initialise
+            state: Initialise {
+                instruments: self.instruments.ok_or(EngineError::BuilderIncomplete("instruments"))?
+            }
         }))
     }
 }
