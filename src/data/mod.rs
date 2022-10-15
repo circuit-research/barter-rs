@@ -1,6 +1,7 @@
 use barter_data::model::MarketEvent;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use crate::event::Feed;
 
 /// Barter data module specific errors.
 pub mod error;
@@ -15,14 +16,6 @@ pub mod historical;
 pub trait MarketGenerator {
     /// Return the latest [`MarketEvent`].
     fn generate(&mut self) -> Feed<MarketEvent>;
-}
-
-/// Communicates the state of the [`Feed`] as well as the next event.
-#[derive(Clone, Eq, PartialEq, PartialOrd, Debug, Deserialize, Serialize)]
-pub enum Feed<Event> {
-    Next(Event),
-    Unhealthy,
-    Finished,
 }
 
 /// Metadata detailing the [`Candle`](barter_data::model::Candle) or
