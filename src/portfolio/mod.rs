@@ -6,8 +6,22 @@ use barter_execution::{
 use std::collections::HashMap;
 use barter_execution::model::ClientOrderId;
 use barter_execution::model::order::{InFlight, Open, Order};
+use tokio::sync::mpsc;
+use crate::engine::error::EngineError;
+use crate::event::EventFeed;
+use crate::execution::ExecutionRequest;
 
 pub struct Position;
+
+pub trait Initialiser {
+    type Output;
+
+    fn init(
+        instruments: HashMap<Exchange, Vec<Instrument>>,
+        execution_tx: &mpsc::UnboundedSender<ExecutionRequest>,
+        feed: &mut EventFeed,
+    ) -> Result<Self::Output, EngineError>;
+}
 
 pub trait MarketUpdater {
     fn update_from_market(&mut self, market: MarketEvent);
