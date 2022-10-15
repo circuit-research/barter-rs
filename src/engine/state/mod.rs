@@ -18,7 +18,6 @@ pub struct Initialise;
 
 impl<Strategy> Trader<Strategy, Initialise> {
     pub fn init(self) -> Engine<Strategy> {
-
         // Send ExecutionRequests
 
         // Wait for response AccountEvents w/ timeout
@@ -30,7 +29,6 @@ impl<Strategy> Trader<Strategy, Initialise> {
 
         Engine::Consume(Trader::from(self))
     }
-
 }
 
 /// a) Initialise -> Consume
