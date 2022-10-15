@@ -8,8 +8,8 @@ use crate::engine::{Engine, Trader};
 /// a) [`GenerateOrder<Algorithmic>`](GenerateOrder)
 pub struct UpdateFromMarket;
 
-impl<Strategy, Execution> Trader<Strategy, Execution, UpdateFromMarket> {
-    pub fn update(self, _market: MarketEvent) -> Engine<Strategy, Execution> {
+impl<Strategy> Trader<Strategy, UpdateFromMarket> {
+    pub fn update(self, _market: MarketEvent) -> Engine<Strategy> {
         // Todo:
         //  - Update Positions
         //  - Update Indicators
@@ -18,8 +18,8 @@ impl<Strategy, Execution> Trader<Strategy, Execution, UpdateFromMarket> {
 }
 
 /// a) UpdateFromMarket -> GenerateOrder<Algorithmic>
-impl<Strategy, Execution> From<Trader<Strategy, Execution, UpdateFromMarket>> for Trader<Strategy, Execution, GenerateOrder<Algorithmic>> {
-    fn from(trader: Trader<Strategy, Execution, UpdateFromMarket>) -> Self {
+impl<Strategy> From<Trader<Strategy, UpdateFromMarket>> for Trader<Strategy, GenerateOrder<Algorithmic>> {
+    fn from(trader: Trader<Strategy, UpdateFromMarket>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,

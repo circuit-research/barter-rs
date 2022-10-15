@@ -16,8 +16,8 @@ pub mod terminate;
 /// b) [`Terminate`]
 pub struct Initialise;
 
-impl<Strategy, Execution> Trader<Strategy, Execution, Initialise> {
-    pub fn init(self) -> Engine<Strategy, Execution> {
+impl<Strategy> Trader<Strategy, Initialise> {
+    pub fn init(self) -> Engine<Strategy> {
 
         // Send ExecutionRequests
 
@@ -34,16 +34,16 @@ impl<Strategy, Execution> Trader<Strategy, Execution, Initialise> {
 }
 
 /// a) Initialise -> Consume
-impl<Strategy, Execution> From<Trader<Strategy, Execution, Initialise>> for Trader<Strategy, Execution, Consume> {
-    fn from(trader: Trader<Strategy, Execution, Initialise>) -> Self {
+impl<Strategy> From<Trader<Strategy, Initialise>> for Trader<Strategy, Consume> {
+    fn from(trader: Trader<Strategy, Initialise>) -> Self {
         todo!()
     }
 }
 
 
 /// b) Initialise -> Terminate
-impl<Strategy, Execution> From<Trader<Strategy, Execution, Initialise>> for Trader<Strategy, Execution, Terminate> {
-    fn from(trader: Trader<Strategy, Execution, Initialise>) -> Self {
+impl<Strategy> From<Trader<Strategy, Initialise>> for Trader<Strategy, Terminate> {
+    fn from(trader: Trader<Strategy, Initialise>) -> Self {
         todo!()
         // Self {
         //     state: Terminated {
