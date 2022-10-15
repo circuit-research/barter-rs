@@ -23,32 +23,28 @@ where
     Portfolio: MarketUpdater + AccountUpdater,
 {
     pub fn execute_manual_command(self, command: Command) -> Engine<Strategy, Portfolio> {
+        info!(payload = ?command, "received Command");
+
         match command {
             Command::FetchOpenPositions => {
-                info!(kind = "Command", payload = "FetchOpenPositions", "received Event");
                 // Todo: Fetch & send (where?)
                 Engine::Consume(Trader::from(self))
             }
             Command::ExitPosition => {
-                info!(kind = "Command", payload = "ExitPosition", "received Event");
                 // Todo: Add relevant metadata for the Position to exit
                 Engine::GenerateOrderManual((Trader::from(self), ()))
             }
             Command::ExitAllPositions => {
-                info!(kind = "Command", payload = "ExitAllPositions", "received Event");
                 // Todo: Add relevant metadata for the Position to exit
                 Engine::GenerateOrderManual((Trader::from(self), ()))
             }
             Command::Terminate => {
-                info!(kind = "Command", payload = "Terminate", "received Event");
                 // Todo: Do pre-termination tasks
                 Engine::Terminate(Trader::from(self))
             }
         }
     }
 }
-
-
 
 /// a) Commander -> Consume
 impl<Strategy, Portfolio> From<Trader<Strategy, ExecuteCommand<Portfolio>>> for Trader<Strategy, Consume<Portfolio>> {
@@ -89,4 +85,3 @@ impl<Strategy, Portfolio> From<Trader<Strategy, ExecuteCommand<Portfolio>>> for 
         }
     }
 }
-

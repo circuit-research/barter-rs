@@ -96,12 +96,13 @@ impl<Strategy, Portfolio> From<Trader<Strategy, Consume<Portfolio>>> for Trader<
 /// d) Consume -> Terminate
 impl<Strategy, Portfolio> From<Trader<Strategy, Consume<Portfolio>>> for Trader<Strategy, Terminate> {
     fn from(trader: Trader<Strategy, Consume<Portfolio>>) -> Self {
-        todo!()
-        // Self {
-        //     state: Terminated {
-        //         reason: ()
-        //     },
-        //     feed: trader.feed,
-        // }
+        Self {
+            feed: trader.feed,
+            strategy: trader.strategy,
+            execution_tx: trader.execution_tx,
+            state: Terminate {
+                reason: Ok("EventFeed Feed::Finished")
+            }
+        }
     }
 }
