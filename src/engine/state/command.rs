@@ -9,6 +9,7 @@ use crate::{
 };
 use tracing::info;
 use crate::portfolio::{AccountUpdater, MarketUpdater};
+use crate::strategy::OrderGenerator;
 
 /// [`ExecuteCommand`] can transition to one of:
 /// a) [`Consume`]
@@ -20,6 +21,7 @@ pub struct ExecuteCommand<Portfolio> {
 
 impl<Strategy, Portfolio> Trader<Strategy, ExecuteCommand<Portfolio>>
 where
+    Strategy: OrderGenerator,
     Portfolio: MarketUpdater + AccountUpdater,
 {
     pub fn execute_manual_command(self, command: Command) -> Engine<Strategy, Portfolio> {
@@ -28,25 +30,24 @@ where
         match command {
             Command::FetchOpenPositions => {
                 // Todo: Fetch & send (where?)
-
                 // Transition Engine state to Consume
-                Engine::Consume(Trader::from(self))
+                // Engine::Consume(Trader::from(self))
+                unimplemented!()
             }
             Command::ExitPosition => {
-                // Todo: Add relevant metadata for the Position to exit
-
+                // Todo: Add relevant Order<RequestOpen> for Position to exit
                 // Transition Engine state to GenerateOrder<Manual>
-                Engine::GenerateOrderManual((Trader::from(self), ()))
+                // Engine::GenerateOrderManual((Trader::from(self), ()))
+                unimplemented!()
             }
             Command::ExitAllPositions => {
-                // Todo: Add relevant metadata for the Position to exit
-
+                // Todo: Add relevant Vec<Order<RequestOpen>> for the all Positions to exit
                 // Transition Engine state to GenerateOrder<Manual>
-                Engine::GenerateOrderManual((Trader::from(self), ()))
+                // Engine::GenerateOrderManual((Trader::from(self), ()))
+                unimplemented!()
             }
             Command::Terminate => {
                 // Todo: Do pre-termination tasks
-
                 // Transition Engine state to Terminate
                 Engine::Terminate(Trader::from(self))
             }
@@ -69,13 +70,16 @@ impl<Strategy, Portfolio> From<Trader<Strategy, ExecuteCommand<Portfolio>>> for 
 }
 
 /// b) ExecuteCommand -> GenerateOrder<Manual>
-impl<Strategy, Portfolio> From<Trader<Strategy, ExecuteCommand<Portfolio>>> for Trader<Strategy, GenerateOrder<Manual>> {
+impl<Strategy, Portfolio> From<Trader<Strategy, ExecuteCommand<Portfolio>>> for Trader<Strategy, GenerateOrder<Portfolio, Manual>> {
     fn from(trader: Trader<Strategy, ExecuteCommand<Portfolio>>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
             execution_tx: trader.execution_tx,
-            state: GenerateOrder { state: Manual },
+            state: GenerateOrder {
+                portfolio: trader.state.portfolio,
+                kind: Manual
+            },
         }
     }
 }
