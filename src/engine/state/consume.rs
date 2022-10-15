@@ -8,7 +8,8 @@ use crate::{
     event::{Feed, Event},
     engine::{
         Engine, Trader,
-    }
+    },
+    portfolio::{AccountUpdater, MarketUpdater}
 };
 
 /// [`Consume`] can transition to one of:
@@ -17,12 +18,15 @@ use crate::{
 /// c) [`ExecuteCommand`]
 /// d) [`Terminate`]
 #[derive(Debug)]
-pub struct Consume {
-
+pub struct Consume<Portfolio> {
+    pub portfolio: Portfolio
 }
 
-impl<Strategy> Trader<Strategy, Consume> {
-    pub fn next_event(mut self) -> Engine<Strategy> {
+impl<Strategy, Portfolio> Trader<Strategy, Consume<Portfolio>>
+where
+    Portfolio: MarketUpdater + AccountUpdater,
+{
+    pub fn next_event(mut self) -> Engine<Strategy, Portfolio> {
         // Consume next Event
         match self.feed.next() {
             Feed::Next(Event::Market(market)) => {
@@ -42,44 +46,56 @@ impl<Strategy> Trader<Strategy, Consume> {
 }
 
 /// a) Consume -> UpdateFromMarket
-impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, UpdateFromMarket> {
-    fn from(trader: Trader<Strategy, Consume>) -> Self {
+impl<Strategy, Portfolio> From<Trader<Strategy, Consume<Portfolio>>> for Trader<Strategy, UpdateFromMarket<Portfolio>>
+where
+    Portfolio: MarketUpdater,
+{
+    fn from(trader: Trader<Strategy, Consume<Portfolio>>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
             execution_tx: trader.execution_tx,
-            state: UpdateFromMarket,
+            state: UpdateFromMarket {
+                portfolio: trader.state.portfolio
+            },
         }
     }
 }
 
 /// b) Consume -> UpdateFromAccount
-impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, UpdateFromAccount> {
-    fn from(trader: Trader<Strategy, Consume>) -> Self {
+impl<Strategy, Portfolio> From<Trader<Strategy, Consume<Portfolio>>> for Trader<Strategy, UpdateFromAccount<Portfolio>>
+where
+    Portfolio: AccountUpdater,
+{
+    fn from(trader: Trader<Strategy, Consume<Portfolio>>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
             execution_tx: trader.execution_tx,
-            state: UpdateFromAccount,
+            state: UpdateFromAccount {
+                portfolio: trader.state.portfolio,
+            },
         }
     }
 }
 
 /// c) Consume -> ExecuteCommand
-impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, ExecuteCommand> {
-    fn from(trader: Trader<Strategy, Consume>) -> Self {
+impl<Strategy, Portfolio> From<Trader<Strategy, Consume<Portfolio>>> for Trader<Strategy, ExecuteCommand<Portfolio>> {
+    fn from(trader: Trader<Strategy, Consume<Portfolio>>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
             execution_tx: trader.execution_tx,
-            state: ExecuteCommand,
+            state: ExecuteCommand {
+                portfolio: trader.state.portfolio,
+            },
         }
     }
 }
 
 /// d) Consume -> Terminate
-impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, Terminate> {
-    fn from(trader: Trader<Strategy, Consume>) -> Self {
+impl<Strategy, Portfolio> From<Trader<Strategy, Consume<Portfolio>>> for Trader<Strategy, Terminate> {
+    fn from(trader: Trader<Strategy, Consume<Portfolio>>) -> Self {
         todo!()
         // Self {
         //     state: Terminated {
