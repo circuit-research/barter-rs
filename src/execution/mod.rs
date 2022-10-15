@@ -1,17 +1,71 @@
-use request::RequestFeed;
+use self::request::ExecutionRequest;
 use crate::{
     event::Event,
 };
 use barter_integration::model::Exchange;
 use barter_execution::ExecutionClient;
-use std::collections::HashMap;
-use chrono::Utc;
-use futures::StreamExt;
 use tokio::sync::mpsc;
-use barter_execution::model::{AccountEvent, AccountEventKind};
-use barter_execution::model::order::{Order, RequestCancel, RequestOpen};
+
 
 pub mod request;
+
+pub trait ExecutionManager {
+    fn execute(&self, request: ExecutionRequest);
+}
+
+pub struct ExchangeSingle<Client>
+where
+    Client: ExecutionClient
+{
+    pub exchange: Exchange,
+    pub account_tx: mpsc::UnboundedSender<Event>,
+    pub client: Client
+}
+
+impl<Client> ExchangeSingle<Client>
+where
+    Client: ExecutionClient
+{
+    pub fn validate(&self, exchange: &Exchange) {
+        if self.exchange != *exchange {
+            panic!("ExchangeSingle received ExecutionRequest with invalid exchange: {}", exchange)
+        }
+    }
+}
+
+impl<Client> ExecutionManager for ExchangeSingle<Client>
+where
+    Client: ExecutionClient,
+{
+    fn execute(&self, request: ExecutionRequest) {
+        match request {
+            ExecutionRequest::FetchOrdersOpen(exchange) => {
+                self.validate(&exchange);
+                let orders = self.client.fetch_orders_open();
+            }
+            ExecutionRequest::FetchOrdersOpenAll => {
+
+            }
+            ExecutionRequest::OpenOrders(_) => {
+
+            }
+            ExecutionRequest::CancelOrders(_) => {
+
+            }
+            ExecutionRequest::CancelOrdersAll => {
+
+            }
+            ExecutionRequest::FetchBalances(_) => {
+
+            }
+            ExecutionRequest::FetchBalancesAll => {
+
+            }
+        }
+    }
+}
+
+
 
 
 // // Todo:
