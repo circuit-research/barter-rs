@@ -1,18 +1,16 @@
-use barter_integration::model::{Exchange, Instrument, Symbol};
-use barter_data::model::MarketEvent;
-use barter_execution::{
-    model::{AccountEvent, balance::Balance}
+use crate::{
+    event::EventFeed,
+    engine::error::EngineError,
+    execution::ExecutionRequest,
 };
+use barter_integration::model::{Exchange, Instrument};
+use barter_data::model::MarketEvent;
+use barter_execution::model::AccountEvent;
 use std::collections::HashMap;
-use barter_execution::model::{AccountEventKind, ClientOrderId};
-use barter_execution::model::order::{InFlight, Open, Order};
 use tokio::sync::mpsc;
-use tracing::info;
-use crate::engine::error::EngineError;
-use crate::event::EventFeed;
-use crate::execution::ExecutionRequest;
 
-pub struct Position;
+pub mod account;
+pub mod position;
 
 pub trait Initialiser {
     type Output;
@@ -30,38 +28,5 @@ pub trait MarketUpdater {
 
 pub trait AccountUpdater {
     fn update_from_account(&mut self, account: &AccountEvent);
-}
-
-pub struct Account {
-    pub exchange: Exchange,
-    pub balances: HashMap<Symbol, Balance>,
-    pub positions: HashMap<Instrument, Position>,
-    pub orders_in_flight: HashMap<ClientOrderId, Order<InFlight>>,
-    pub orders_open: HashMap<ClientOrderId, Order<Open>>,
-}
-
-impl MarketUpdater for Account {
-    fn update_from_market(&mut self, market: &MarketEvent) {
-        todo!()
-    }
-}
-
-impl AccountUpdater for Account {
-    fn update_from_account(&mut self, account: &AccountEvent) {
-        match &account.kind {
-            AccountEventKind::OrdersOpen(open) => {
-            }
-            AccountEventKind::OrdersNew(new) => {
-            }
-            AccountEventKind::OrdersCancelled(cancelled) => {
-            }
-            AccountEventKind::Balance(balance) => {
-            }
-            AccountEventKind::Balances(balances) => {
-            }
-            AccountEventKind::Trade(trade) => {
-            }
-        }
-    }
 }
 
