@@ -4,13 +4,22 @@ use super::{
 use crate::engine::{Engine, Trader};
 use barter_execution::model::{AccountEvent, AccountEventKind};
 use tracing::info;
+use crate::portfolio::{AccountUpdater, MarketUpdater};
 
 /// [`UpdateFromAccount`] can only transition to:
 /// a) [`Consume`]
-pub struct UpdateFromAccount;
+pub struct UpdateFromAccount<Portfolio>
+where
+    Portfolio: AccountUpdater,
+{
+    pub portfolio: Portfolio,
+}
 
-impl<Strategy> Trader<Strategy, UpdateFromAccount> {
-    pub fn update(self, account: AccountEvent) -> Engine<Strategy> {
+impl<Strategy, Portfolio> Trader<Strategy, UpdateFromAccount<Portfolio>>
+where
+    Portfolio: MarketUpdater + AccountUpdater,
+{
+    pub fn update(self, account: AccountEvent) -> Engine<Strategy, Portfolio> {
         match account.kind {
             AccountEventKind::OrdersOpen(open) => {
                 info!(kind = "Account", exchange = ?account.exchange, payload = ?open, "received Event");
@@ -37,14 +46,17 @@ impl<Strategy> Trader<Strategy, UpdateFromAccount> {
 }
 
 /// a) UpdateFromAccount -> Consume
-impl<Strategy> From<Trader<Strategy, UpdateFromAccount>> for Trader<Strategy, Consume> {
-    fn from(trader: Trader<Strategy, UpdateFromAccount>) -> Self {
+impl<Strategy, Portfolio> From<Trader<Strategy, UpdateFromAccount<Portfolio>>> for Trader<Strategy, Consume<Portfolio>>
+where
+    Portfolio: AccountUpdater
+{
+    fn from(trader: Trader<Strategy, UpdateFromAccount<Portfolio>>) -> Self {
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
             execution_tx: trader.execution_tx,
             state: Consume {
-
+                portfolio: trader.state.portfolio
             },
         }
     }

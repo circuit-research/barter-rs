@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-use barter_integration::model::{Exchange, Instrument};
 use self::{
     error::EngineError,
     state::{
@@ -14,10 +12,16 @@ use self::{
 };
 use crate::{
     event::{Command, EventFeed},
+    portfolio::{AccountUpdater, MarketUpdater},
     execution::ExecutionRequest,
 };
+use barter_integration::model::{Exchange, Instrument};
 use barter_data::model::MarketEvent;
 use barter_execution::model::AccountEvent;
+use std::{
+    collections::HashMap,
+    marker::PhantomData
+};
 use tokio::sync::mpsc;
 
 
@@ -31,14 +35,17 @@ pub mod error;
 //    --> "Engine" could become "TraderStates" or similar
 
 
-pub enum Engine<Strategy> {
-    Initialise(Trader<Strategy, Initialise>),
-    Consume(Trader<Strategy, Consume>),
-    UpdateFromMarket((Trader<Strategy, UpdateFromMarket>, MarketEvent)),
+pub enum Engine<Strategy, Portfolio>
+where
+    Portfolio: MarketUpdater + AccountUpdater
+{
+    Initialise(Trader<Strategy, Initialise<Portfolio>>),
+    Consume(Trader<Strategy, Consume<Portfolio>>),
+    UpdateFromMarket((Trader<Strategy, UpdateFromMarket<Portfolio>>, MarketEvent)),
     GenerateOrder(Trader<Strategy, GenerateOrder<Algorithmic>>),
     GenerateOrderManual((Trader<Strategy, GenerateOrder<Manual>>, ())),
-    UpdateFromAccount((Trader<Strategy, UpdateFromAccount>, AccountEvent)),
-    ExecuteCommand((Trader<Strategy, ExecuteCommand>, Command)),
+    UpdateFromAccount((Trader<Strategy, UpdateFromAccount<Portfolio>>, AccountEvent)),
+    ExecuteCommand((Trader<Strategy, ExecuteCommand<Portfolio>>, Command)),
     Terminate(Trader<Strategy, Terminate>)
 }
 
@@ -49,9 +56,12 @@ pub struct Trader<Strategy, State> {
     pub state: State,
 }
 
-impl<Strategy> Engine<Strategy> {
+impl<Strategy, Portfolio> Engine<Strategy, Portfolio>
+where
+    Portfolio: MarketUpdater + AccountUpdater
+{
     /// Builder to construct [`Engine`] instances.
-    pub fn builder() -> EngineBuilder<Strategy> {
+    pub fn builder() -> EngineBuilder<Strategy, Portfolio> {
         EngineBuilder::new()
     }
 
@@ -99,20 +109,25 @@ impl<Strategy> Engine<Strategy> {
 
 /// Builder to construct [`Engine`] instances.
 #[derive(Default)]
-pub struct EngineBuilder<Strategy> {
+pub struct EngineBuilder<Strategy, Portfolio> {
     pub feed: Option<EventFeed>,
     pub strategy: Option<Strategy>,
     pub execution_tx: Option<mpsc::UnboundedSender<ExecutionRequest>>,
     pub instruments: Option<HashMap<Exchange, Vec<Instrument>>>,
+    pub phantom: PhantomData<Portfolio>,
 }
 
-impl<Strategy> EngineBuilder<Strategy> {
+impl<Strategy, Portfolio> EngineBuilder<Strategy, Portfolio>
+where
+    Portfolio: MarketUpdater + AccountUpdater,
+{
     fn new() -> Self {
         Self {
             feed: None,
             strategy: None,
             execution_tx: None,
-            instruments: None
+            instruments: None,
+            phantom: PhantomData::default()
         }
     }
 
@@ -144,13 +159,14 @@ impl<Strategy> EngineBuilder<Strategy> {
         }
     }
 
-    pub fn build(self) -> Result<Engine<Strategy>, EngineError> {
+    pub fn build(self) -> Result<Engine<Strategy, Portfolio>, EngineError> {
         Ok(Engine::Initialise(Trader {
             feed: self.feed.ok_or(EngineError::BuilderIncomplete("feed"))?,
             strategy: self.strategy.ok_or(EngineError::BuilderIncomplete("strategy"))?,
             execution_tx: self.execution_tx.ok_or(EngineError::BuilderIncomplete("execution_tx"))?,
             state: Initialise {
-                instruments: self.instruments.ok_or(EngineError::BuilderIncomplete("instruments"))?
+                instruments: self.instruments.ok_or(EngineError::BuilderIncomplete("instruments"))?,
+                phantom: self.phantom
             }
         }))
     }
