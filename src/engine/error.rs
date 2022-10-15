@@ -15,4 +15,7 @@ pub enum EngineError {
 
     #[error("Data: {0}")]
     Execution(#[from] ExecutionError),
+    
+    #[error("Execution thread ExecutionRequest receiver closed unexpectedly")]
+    ExecutionTerminated,
 }

@@ -1,11 +1,13 @@
 use super::{
     consume::Consume,
 };
-use crate::engine::{Engine, Trader};
-use barter_execution::model::{AccountEvent, AccountEventKind};
+use crate::{
+    engine::{Engine, Trader},
+    portfolio::{AccountUpdater, MarketUpdater},
+    strategy::OrderGenerator,
+};
+use barter_execution::model::{AccountEvent};
 use tracing::info;
-use crate::portfolio::{AccountUpdater, MarketUpdater};
-use crate::strategy::OrderGenerator;
 
 /// [`UpdateFromAccount`] can only transition to:
 /// a) [`Consume`]

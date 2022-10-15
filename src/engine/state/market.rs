@@ -1,11 +1,13 @@
-use tracing::info;
-use barter_data::model::MarketEvent;
 use super::{
     order::{GenerateOrder, Algorithmic},
 };
-use crate::engine::{Engine, Trader};
-use crate::portfolio::{AccountUpdater, MarketUpdater};
-use crate::strategy::OrderGenerator;
+use crate::{
+    engine::{Engine, Trader},
+    portfolio::{AccountUpdater, MarketUpdater},
+    strategy::OrderGenerator,
+};
+use barter_data::model::MarketEvent;
+use tracing::info;
 
 /// [`UpdateFromMarket`] can only transition to:
 /// a) [`GenerateOrder<Algorithmic>`](GenerateOrder)
