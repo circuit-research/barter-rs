@@ -17,7 +17,9 @@ use crate::{
 /// c) [`ExecuteCommand`]
 /// d) [`Terminate`]
 #[derive(Debug)]
-pub struct Consume;
+pub struct Consume {
+
+}
 
 impl<Strategy> Trader<Strategy, Consume> {
     pub fn next_event(mut self) -> Engine<Strategy> {
