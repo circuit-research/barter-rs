@@ -15,8 +15,8 @@ use tracing::info;
 /// c) [`Terminate`]
 pub struct ExecuteCommand;
 
-impl Trader<ExecuteCommand> {
-    pub fn execute_manual_command(self, command: Command) -> Engine {
+impl<Strategy, Execution> Trader<Strategy, Execution, ExecuteCommand> {
+    pub fn execute_manual_command(self, command: Command) -> Engine<Strategy, Execution> {
         match command {
             Command::FetchOpenPositions => {
                 info!(kind = "Command", payload = "FetchOpenPositions", "received Event");
@@ -45,33 +45,39 @@ impl Trader<ExecuteCommand> {
 
 
 /// a) Commander -> Consume
-impl From<Trader<ExecuteCommand>> for Trader<Consume> {
-    fn from(trader: Trader<ExecuteCommand>) -> Self {
+impl<Strategy, Execution> From<Trader<Strategy, Execution, ExecuteCommand>> for Trader<Strategy, Execution, Consume> {
+    fn from(trader: Trader<Strategy, Execution, ExecuteCommand>) -> Self {
         Self {
-            state: Consume,
             feed: trader.feed,
+            strategy: trader.strategy,
+            execution: trader.execution,
+            state: Consume,
         }
     }
 }
 
 /// b) ExecuteCommand -> GenerateOrder<Manual>
-impl From<Trader<ExecuteCommand>> for Trader<GenerateOrder<Manual>> {
-    fn from(trader: Trader<ExecuteCommand>) -> Self {
+impl<Strategy, Execution> From<Trader<Strategy, Execution, ExecuteCommand>> for Trader<Strategy, Execution, GenerateOrder<Manual>> {
+    fn from(trader: Trader<Strategy, Execution, ExecuteCommand>) -> Self {
         Self {
-            state: GenerateOrder { state: Manual },
             feed: trader.feed,
+            strategy: trader.strategy,
+            execution: trader.execution,
+            state: GenerateOrder { state: Manual },
         }
     }
 }
 
 /// c) Commander -> Terminated
-impl From<Trader<ExecuteCommand>> for Trader<Terminate> {
-    fn from(trader: Trader<ExecuteCommand>) -> Self {
+impl<Strategy, Execution> From<Trader<Strategy, Execution, ExecuteCommand>> for Trader<Strategy, Execution, Terminate> {
+    fn from(trader: Trader<Strategy, Execution, ExecuteCommand>) -> Self {
         Self {
+            feed: trader.feed,
+            strategy: trader.strategy,
+            execution: trader.execution,
             state: Terminate {
                 reason: Ok("Command::Terminate")
             },
-            feed: trader.feed,
         }
     }
 }
