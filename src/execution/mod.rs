@@ -1,71 +1,54 @@
-use self::request::ExecutionRequest;
 use crate::{
-    event::Event,
+    event::{Event, Feed},
 };
 use barter_integration::model::Exchange;
-use barter_execution::ExecutionClient;
+use barter_execution::model::{
+    AccountEvent, AccountEventKind,
+    order::{Order, RequestCancel, RequestOpen}
+};
+use chrono::Utc;
 use tokio::sync::mpsc;
 
+pub mod single;
+pub mod multi;
 
-pub mod request;
-
-pub trait ExecutionManager {
-    fn execute(&self, request: ExecutionRequest);
+pub enum ExecutionRequest {
+    FetchOrdersOpen(Exchange),
+    FetchOrdersOpenAll,
+    OpenOrders(Vec<Order<RequestOpen>>),
+    CancelOrders(Vec<Order<RequestCancel>>),
+    CancelOrdersAll,
+    FetchBalances(Exchange),
+    FetchBalancesAll,
 }
 
-pub struct ExchangeSingle<Client>
-where
-    Client: ExecutionClient
-{
-    pub exchange: Exchange,
-    pub account_tx: mpsc::UnboundedSender<Event>,
-    pub client: Client
+pub struct RequestFeed {
+    pub request_rx: mpsc::UnboundedReceiver<ExecutionRequest>
 }
 
-impl<Client> ExchangeSingle<Client>
-where
-    Client: ExecutionClient
-{
-    pub fn validate(&self, exchange: &Exchange) {
-        if self.exchange != *exchange {
-            panic!("ExchangeSingle received ExecutionRequest with invalid exchange: {}", exchange)
-        }
+impl RequestFeed {
+    pub fn new(request_rx: mpsc::UnboundedReceiver<ExecutionRequest>) -> Self {
+        Self { request_rx }
     }
-}
 
-impl<Client> ExecutionManager for ExchangeSingle<Client>
-where
-    Client: ExecutionClient,
-{
-    fn execute(&self, request: ExecutionRequest) {
-        match request {
-            ExecutionRequest::FetchOrdersOpen(exchange) => {
-                self.validate(&exchange);
-                let orders = self.client.fetch_orders_open();
-            }
-            ExecutionRequest::FetchOrdersOpenAll => {
-
-            }
-            ExecutionRequest::OpenOrders(_) => {
-
-            }
-            ExecutionRequest::CancelOrders(_) => {
-
-            }
-            ExecutionRequest::CancelOrdersAll => {
-
-            }
-            ExecutionRequest::FetchBalances(_) => {
-
-            }
-            ExecutionRequest::FetchBalancesAll => {
-
+    pub fn next(&mut self) -> Feed<ExecutionRequest> {
+        loop {
+            match self.request_rx.try_recv() {
+                Ok(request) => break Feed::Next(request),
+                Err(mpsc::error::TryRecvError::Empty) => continue,
+                Err(mpsc::error::TryRecvError::Disconnected) => break Feed::Finished
             }
         }
     }
 }
 
-
+pub fn build_account_event(exchange: Exchange, kind: AccountEventKind) -> Event {
+    Event::Account(AccountEvent {
+        received_time: Utc::now(),
+        exchange,
+        kind
+    })
+}
 
 
 // // Todo:

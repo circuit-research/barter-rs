@@ -45,7 +45,7 @@ impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, UpdateFromMa
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
-            execution: trader.execution,
+            execution_tx: trader.execution_tx,
             state: UpdateFromMarket,
         }
     }
@@ -57,7 +57,7 @@ impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, UpdateFromAc
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
-            execution: trader.execution,
+            execution_tx: trader.execution_tx,
             state: UpdateFromAccount,
         }
     }
@@ -69,7 +69,7 @@ impl<Strategy> From<Trader<Strategy, Consume>> for Trader<Strategy, ExecuteComma
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
-            execution: trader.execution,
+            execution_tx: trader.execution_tx,
             state: ExecuteCommand,
         }
     }

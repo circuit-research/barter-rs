@@ -20,7 +20,7 @@ impl<Strategy> Trader<Strategy, ExecuteCommand> {
         match command {
             Command::FetchOpenPositions => {
                 info!(kind = "Command", payload = "FetchOpenPositions", "received Event");
-                // Todo: Send data to audit_tx
+                // Todo: Fetch & send (where?)
                 Engine::Consume(Trader::from(self))
             }
             Command::ExitPosition => {
@@ -50,7 +50,7 @@ impl<Strategy> From<Trader<Strategy, ExecuteCommand>> for Trader<Strategy, Consu
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
-            execution: trader.execution,
+            execution_tx: trader.execution_tx,
             state: Consume,
         }
     }
@@ -62,7 +62,7 @@ impl<Strategy> From<Trader<Strategy, ExecuteCommand>> for Trader<Strategy, Gener
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
-            execution: trader.execution,
+            execution_tx: trader.execution_tx,
             state: GenerateOrder { state: Manual },
         }
     }
@@ -74,7 +74,7 @@ impl<Strategy> From<Trader<Strategy, ExecuteCommand>> for Trader<Strategy, Termi
         Self {
             feed: trader.feed,
             strategy: trader.strategy,
-            execution: trader.execution,
+            execution_tx: trader.execution_tx,
             state: Terminate {
                 reason: Ok("Command::Terminate")
             },
