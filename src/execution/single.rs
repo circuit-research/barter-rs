@@ -10,17 +10,17 @@ use barter_execution::{
 use tokio::sync::mpsc;
 use tracing::info;
 
-pub struct ExchangeSingle<Client>
+pub struct ExecutionManager<Client>
 where
     Client: ExecutionClient
 {
     pub exchange: Exchange,
     pub execution_rx: mpsc::UnboundedReceiver<ExecutionRequest>,
     pub client: Client,
-    pub account_tx: mpsc::UnboundedSender<Event>,
+    pub event_feed_tx: mpsc::UnboundedSender<Event>,
 }
 
-impl<Client> ExchangeSingle<Client>
+impl<Client> ExecutionManager<Client>
 where
     Client: ExecutionClient
 {
@@ -29,7 +29,7 @@ where
             let response_kind = self.execute(request).await;
             let event = build_account_event(self.exchange.clone(), response_kind);
 
-            if self.account_tx.send(event).is_err() {
+            if self.event_feed_tx.send(event).is_err() {
                 info!(
                     exchange = ?self.exchange,
                     "shutting down ExchangeSingle ExecutionClient manager"
