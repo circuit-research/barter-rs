@@ -93,6 +93,8 @@ async fn main() {
     );
 
     // Run SimulatedExchange
+    // Todo: Spawn task to send Simulated::Trades to the SimulatedExchange via simulation_rx
+    //  '--> How to ensure user always adds a market liquidity stream to exchange?
     tokio::spawn(
         SimulatedExchange::builder()
             .event_simulated_rx(simulated_rx)
