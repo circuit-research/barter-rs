@@ -49,7 +49,14 @@ pub struct Order<InstrumentKey, State> {
 }
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize, From)]
-pub enum OrderState {
+pub enum InternalOrderState {
+    OpenInFlight(OpenInFlight),
+    Open(Open),
+    CancelInFlight(CancelInFlight),
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize, From)]
+pub enum ExchangeOrderState {
     Open(Open),
     OpenRejected(OpenRejectedReason),
     CancelRejected(CancelRejectedReason),
@@ -124,3 +131,41 @@ pub struct Cancelled {
 
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize, From)]
 pub struct CancelRejectedReason(pub String);
+
+impl<InstrumentKey> From<Order<InstrumentKey, OpenInFlight>>
+    for Order<InstrumentKey, InternalOrderState>
+{
+    fn from(value: Order<InstrumentKey, OpenInFlight>) -> Self {
+        let Order {
+            instrument,
+            cid,
+            side,
+            state,
+        } = value;
+
+        Self {
+            instrument,
+            cid,
+            side,
+            state: InternalOrderState::OpenInFlight(state),
+        }
+    }
+}
+
+impl<InstrumentKey> From<Order<InstrumentKey, Open>> for Order<InstrumentKey, InternalOrderState> {
+    fn from(value: Order<InstrumentKey, Open>) -> Self {
+        let Order {
+            instrument,
+            cid,
+            side,
+            state,
+        } = value;
+
+        Self {
+            instrument,
+            cid,
+            side,
+            state: InternalOrderState::Open(state),
+        }
+    }
+}

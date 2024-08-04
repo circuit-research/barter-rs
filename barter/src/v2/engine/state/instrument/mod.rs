@@ -2,7 +2,7 @@ use crate::v2::{
     engine::state::instrument::{market_data::MarketState, order::Orders},
     execution::error::ExecutionError,
     instrument::Instrument,
-    order::{Cancelled, Open, OpenInFlight, Order, OrderState},
+    order::{Cancelled, ExchangeOrderState, Open, OpenInFlight, Order},
     position::{PortfolioId, Position},
     trade::Trade,
     Snapshot,
@@ -35,7 +35,10 @@ pub trait OrderManager<InstrumentKey> {
         &mut self,
         response: &Order<InstrumentKey, Result<Cancelled, ExecutionError>>,
     );
-    fn update_from_order_snapshot(&mut self, snapshot: &Snapshot<Order<InstrumentKey, OrderState>>);
+    fn update_from_order_snapshot(
+        &mut self,
+        snapshot: &Snapshot<Order<InstrumentKey, ExchangeOrderState>>,
+    );
 }
 
 pub trait PositionManager<InstrumentKey> {
@@ -131,7 +134,10 @@ impl OrderManager<InstrumentId> for Instruments {
         state.orders.update_from_cancel(response);
     }
 
-    fn update_from_order_snapshot(&mut self, snapshot: &Snapshot<Order<InstrumentId, OrderState>>) {
+    fn update_from_order_snapshot(
+        &mut self,
+        snapshot: &Snapshot<Order<InstrumentId, ExchangeOrderState>>,
+    ) {
         let Some(state) = self.state_mut(&snapshot.0.instrument) else {
             warn!(
                 instrument_id = ?snapshot.0.instrument,

@@ -9,6 +9,7 @@ use crate::v2::{
     },
     execution::{AccountEvent, AccountEventKind, AccountSnapshot},
     instrument::asset::AssetId,
+    order::Order,
     EngineEvent, Snapshot, TryUpdater,
 };
 use barter_data::{event::MarketEvent, instrument::InstrumentId};
@@ -23,7 +24,6 @@ pub mod instrument;
 
 // Todo:
 //  - Setup some way to get "diffs" for eg/ should Orders.update_from_order_snapshot return a diff?
-//  - Should I track "in flight cancels"?
 //  - Should I collapse nested VecMap in balances and use eg/ VecMap<ExchangeAssetKey, Balance>
 //  - Add tests for all Managers, especially Orders & Positions!
 //  - Consider removing duplicate logs when calling instrument.state, state_mut, and also Balances!
@@ -36,7 +36,6 @@ pub mod instrument;
 //  - EngineState should have assoc types for AssetKey & InstrumentKey, to pass to Strategy & Risk?
 
 // Todo: OrderManager:
-//  - Should I track "in flight cancels"?
 //  - OrderManager update_from_open & update_from_cancel may want to return "in flight failed due to X api reason"
 //    '--> eg/ find logic associated with "OrderManager received ExecutionError for Order<InFlight>"
 
@@ -202,6 +201,9 @@ impl<StrategyState, RiskState> DefaultEngineState<StrategyState, RiskState> {
         }
     }
 
+    /// Replace all [`Self`] state with the [`AccountSnapshot`].
+    ///
+    /// All open & cancel in-flight requests will be deleted.
     pub fn update_from_account_snapshot(
         &mut self,
         exchange: &Exchange,
@@ -223,7 +225,16 @@ impl<StrategyState, RiskState> DefaultEngineState<StrategyState, RiskState> {
             let instrument = snapshot.position.instrument;
             if let Some(state) = self.instruments.state_mut(&instrument) {
                 let _ = std::mem::replace(&mut state.position, snapshot.position.clone());
-                let _ = std::mem::replace(&mut state.orders.opens, snapshot.orders.clone());
+
+                // Note: this wipes all open & cancel in-flight requests
+                let _ = std::mem::replace(
+                    &mut state.orders.inner,
+                    snapshot
+                        .orders
+                        .iter()
+                        .map(|order| (order.cid, Order::from(order.clone())))
+                        .collect(),
+                );
             } else {
                 warn!(
                     ?instrument,

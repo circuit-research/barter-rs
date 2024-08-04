@@ -1,7 +1,9 @@
 use crate::v2::{
     balance::AssetBalance,
     execution::error::{ConnectivityError, ExecutionError},
-    order::{Cancelled, ClientOrderId, Open, Order, OrderState, RequestCancel, RequestOpen},
+    order::{
+        Cancelled, ClientOrderId, ExchangeOrderState, Open, Order, RequestCancel, RequestOpen,
+    },
     position::Position,
     trade::Trade,
     Snapshot,
@@ -61,7 +63,7 @@ pub enum AccountEventKind<AssetKey, InstrumentKey> {
     /// Single [`AssetBalance`] snapshot - replaces existing balance state.
     BalanceSnapshot(Snapshot<AssetBalance<AssetKey>>),
     /// Single [`Order<InstrumentKey, Open>`] snapshot - replaces existing order state.
-    OrderSnapshot(Snapshot<Order<InstrumentKey, OrderState>>),
+    OrderSnapshot(Snapshot<Order<InstrumentKey, ExchangeOrderState>>),
     /// Single [`Position`] snapshot - replaces existing position state.
     PositionSnapshot(Snapshot<Position<InstrumentKey>>),
 
@@ -96,5 +98,5 @@ pub struct AccountSnapshot<AssetKey, InstrumentKey> {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Constructor)]
 pub struct InstrumentAccountSnapshot<InstrumentKey> {
     pub position: Position<InstrumentKey>,
-    pub orders: VecMap<ClientOrderId, Order<InstrumentKey, Open>>,
+    pub orders: Vec<Order<InstrumentKey, Open>>,
 }

@@ -1,7 +1,10 @@
 use crate::v2::{
     engine::state::instrument::OrderManager,
     execution::error::ExecutionError,
-    order::{CancelInFlight, Cancelled, ClientOrderId, Open, OpenInFlight, Order, OrderState},
+    order::{
+        CancelInFlight, Cancelled, ClientOrderId, ExchangeOrderState, InternalOrderState, Open,
+        OpenInFlight, Order,
+    },
     Snapshot,
 };
 use derive_more::{Constructor, From};
@@ -17,13 +20,6 @@ use vecmap::{map::Entry, VecMap};
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Constructor)]
 pub struct Orders<InstrumentKey> {
     pub inner: VecMap<ClientOrderId, Order<InstrumentKey, InternalOrderState>>,
-}
-
-#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize, From)]
-enum InternalOrderState {
-    OpenInFlight(OpenInFlight),
-    Open(Open),
-    CancelInFlight(CancelInFlight),
 }
 
 impl<InstrumentKey> OrderManager<InstrumentKey> for Orders<InstrumentKey>
@@ -155,19 +151,20 @@ where
 
     fn update_from_order_snapshot(
         &mut self,
-        snapshot: &Snapshot<Order<InstrumentKey, OrderState>>,
+        snapshot: &Snapshot<Order<InstrumentKey, ExchangeOrderState>>,
     ) {
         let Snapshot(snapshot) = snapshot;
         let existing = self.inner.entry(snapshot.cid);
 
         // Todo: add logging where appropriate below
         // '--> is this robust enough? It's more simple than the previous impl way below
+        panic!("todo");
 
         match &snapshot.state {
-            OrderState::Open(new_open) => {
+            ExchangeOrderState::Open(new_open) => {
                 self.inner
                     .entry(snapshot.cid)
-                    .and_modify(|order| *order.state = InternalOrderState::Open(new_open.clone()))
+                    .and_modify(|order| order.state = InternalOrderState::Open(new_open.clone()))
                     .or_insert(Order::new(
                         snapshot.instrument.clone(),
                         snapshot.cid,
@@ -175,17 +172,17 @@ where
                         InternalOrderState::Open(new_open.clone()),
                     ));
             }
-            OrderState::OpenRejected(reason) => {
+            ExchangeOrderState::OpenRejected(reason) => {
                 if let Some(removed) = self.inner.remove(&snapshot.cid) {
                     // Todo: Log
                 }
             }
-            OrderState::CancelRejected(reason) => {
+            ExchangeOrderState::CancelRejected(reason) => {
                 if let Some(removed) = self.inner.remove(&snapshot.cid) {
                     // Todo: Log
                 }
             }
-            OrderState::Cancelled(new_cancelled) => {
+            ExchangeOrderState::Cancelled(new_cancelled) => {
                 if let Some(removed) = self.inner.remove(&snapshot.cid) {
                     // Todo: Log
                 }
@@ -259,31 +256,12 @@ impl<InstrumentKey> Default for Orders<InstrumentKey> {
     }
 }
 
-impl<InstrumentKey> From<Order<InstrumentKey, OpenInFlight>>
-    for Order<InstrumentKey, InternalOrderState>
-{
-    fn from(value: Order<InstrumentKey, OpenInFlight>) -> Self {
-        let Order {
-            instrument,
-            cid,
-            side,
-            state,
-        } = value;
-        Self {
-            instrument,
-            cid,
-            side,
-            state: InternalOrderState::OpenInFlight(state),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::v2::order::OrderId;
     use barter_integration::model::Side;
-    use chrono::DateTime;
+    use chrono::{DateTime, Utc};
     use std::ops::Add;
 
     fn specific_open_in_flights(
@@ -306,7 +284,7 @@ mod tests {
 
     fn orders(orders: impl IntoIterator<Item = Order<u64, InternalOrderState>>) -> Orders<u64> {
         Orders {
-            inner: orders.into_iter().collect(),
+            inner: orders.into_iter().map(|order| (order.cid, order)).collect(),
         }
     }
 
@@ -330,7 +308,8 @@ mod tests {
             side: Side::Buy,
             state: InternalOrderState::Open(Open {
                 id,
-                time_update: DateTime::MIN_UTC.add(chrono::TimeDelta::seconds(secs_since_epoch)),
+                time_update: DateTime::<Utc>::MIN_UTC
+                    .add(chrono::TimeDelta::seconds(secs_since_epoch)),
                 price: 0.0,
                 quantity: 0.0,
                 filled_quantity: 0.0,
@@ -349,7 +328,8 @@ mod tests {
             side: Side::Buy,
             state: Ok(Open {
                 id,
-                time_update: DateTime::MIN_UTC.add(chrono::TimeDelta::seconds(secs_since_epoch)),
+                time_update: DateTime::<Utc>::MIN_UTC
+                    .add(chrono::TimeDelta::seconds(secs_since_epoch)),
                 price: 0.0,
                 quantity: 0.0,
                 filled_quantity: 0.0,
