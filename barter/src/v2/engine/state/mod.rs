@@ -27,13 +27,18 @@ pub mod instrument;
 //  - Should I collapse nested VecMap in balances and use eg/ VecMap<ExchangeAssetKey, Balance>
 //  - Add tests for all Managers, especially Orders & Positions!
 //  - Consider removing duplicate logs when calling instrument.state, state_mut, and also Balances!
-//  - Consider more Error generics/assoc types to improve flexibility of Strategy & Risk managers
+//  - Consider adding Error generics/assoc types to improve flexibility of Strategy & Risk managers
 //  - Extract methods from impl OrderManager for Orders (eg/ update_from_snapshot covers all bases)
 //    '--> also ensure duplication is removed from update_from_open & update_from_cancel
 //  - Make EngineError more generic to add flexibility to user to define their own
 //  - Allow users to perform shutdown tasks
 //  - Add interface for user Strategy & Risk to access Instrument contract
 //  - EngineState should have assoc types for AssetKey & InstrumentKey, to pass to Strategy & Risk?
+
+// Todo: OrderManager:
+//  - Should I track "in flight cancels"?
+//  - OrderManager update_from_open & update_from_cancel may want to return "in flight failed due to X api reason"
+//    '--> eg/ find logic associated with "OrderManager received ExecutionError for Order<InFlight>"
 
 pub trait EngineState<Event, AssetKey, InstrumentKey, StrategyState, RiskState>
 where

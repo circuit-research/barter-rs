@@ -248,122 +248,121 @@ pub mod v2;
 // #[macro_use]
 // extern crate prettytable;
 
-#[cfg(test)]
-
-pub mod test_util {
-    use crate::{
-        data::MarketMeta,
-        execution::{Fees, FillEvent},
-        portfolio::{position::Position, OrderEvent, OrderType},
-        strategy::{Decision, Signal},
-    };
-    use barter_data::{
-        event::{DataKind, MarketEvent},
-        exchange::ExchangeId,
-        subscription::{candle::Candle, trade::PublicTrade},
-    };
-    use barter_integration::model::{
-        instrument::{kind::InstrumentKind, Instrument},
-        Exchange, Side,
-    };
-    use chrono::Utc;
-    use std::ops::Add;
-
-    /// Build a [`MarketEvent`] of [`DataKind::PublicTrade`](DataKind) with the provided [`Side`].
-    pub fn market_event_trade(side: Side) -> MarketEvent<Instrument, DataKind> {
-        MarketEvent {
-            exchange_time: Utc::now(),
-            received_time: Utc::now(),
-            exchange: Exchange::from(ExchangeId::BinanceSpot),
-            instrument: Instrument::from(("btc", "usdt", InstrumentKind::Spot)),
-            kind: DataKind::Trade(PublicTrade {
-                id: "trade_id".to_string(),
-                price: 1000.0,
-                amount: 1.0,
-                side,
-            }),
-        }
-    }
-
-    /// Build a [`MarketEvent`] of [`DataKind::Candle`](DataKind).
-    pub fn market_event_candle() -> MarketEvent<Instrument, DataKind> {
-        let now = Utc::now();
-        MarketEvent {
-            exchange_time: now,
-            received_time: now.add(chrono::Duration::milliseconds(200)),
-            exchange: Exchange::from(ExchangeId::BinanceSpot),
-            instrument: Instrument::from(("btc", "usdt", InstrumentKind::Spot)),
-            kind: DataKind::Candle(Candle {
-                close_time: now,
-                open: 960.0,
-                high: 1100.0,
-                low: 950.0,
-                close: 1000.0,
-                volume: 100000.0,
-                trade_count: 1000,
-            }),
-        }
-    }
-
-    /// Build a [`Signal`].
-    pub fn signal() -> Signal {
-        Signal {
-            time: Utc::now(),
-            exchange: Exchange::from("binance"),
-            instrument: Instrument::from(("btc", "usdt", InstrumentKind::Spot)),
-            signals: Default::default(),
-            market_meta: Default::default(),
-        }
-    }
-
-    /// Build an [`OrderEvent`] to buy 1.0 contract.
-    pub fn order_event() -> OrderEvent {
-        OrderEvent {
-            time: Utc::now(),
-            exchange: Exchange::from("binance"),
-            instrument: Instrument::from(("eth", "usdt", InstrumentKind::Spot)),
-            market_meta: MarketMeta::default(),
-            decision: Decision::default(),
-            quantity: 1.0,
-            order_type: OrderType::default(),
-        }
-    }
-
-    /// Build a [`FillEvent`] for a single bought contract.
-    pub fn fill_event() -> FillEvent {
-        FillEvent {
-            time: Utc::now(),
-            exchange: Exchange::from("binance"),
-            instrument: Instrument::from(("eth", "usdt", InstrumentKind::Spot)),
-            market_meta: Default::default(),
-            decision: Decision::default(),
-            quantity: 1.0,
-            fill_value_gross: 100.0,
-            fees: Fees::default(),
-        }
-    }
-
-    /// Build a [`Position`].
-    pub fn position() -> Position {
-        Position {
-            position_id: "engine_id_trader_{}_{}_position".to_owned(),
-            exchange: Exchange::from("binance"),
-            instrument: Instrument::from(("eth", "usdt", InstrumentKind::Spot)),
-            meta: Default::default(),
-            side: Side::Buy,
-            quantity: 1.0,
-            enter_fees: Default::default(),
-            enter_fees_total: 0.0,
-            enter_avg_price_gross: 100.0,
-            enter_value_gross: 100.0,
-            exit_fees: Default::default(),
-            exit_fees_total: 0.0,
-            exit_avg_price_gross: 0.0,
-            exit_value_gross: 0.0,
-            current_symbol_price: 100.0,
-            current_value_gross: 100.0,
-            unrealised_profit_loss: 0.0,
-            realised_profit_loss: 0.0,
-        }
-    }
-}
+// #[cfg(test)]
+// pub mod test_util {
+//     use crate::{
+//         data::MarketMeta,
+//         execution::{Fees, FillEvent},
+//         portfolio::{position::Position, OrderEvent, OrderType},
+//         strategy::{Decision, Signal},
+//     };
+//     use barter_data::{
+//         event::{DataKind, MarketEvent},
+//         exchange::ExchangeId,
+//         subscription::{candle::Candle, trade::PublicTrade},
+//     };
+//     use barter_integration::model::{
+//         instrument::{kind::InstrumentKind, Instrument},
+//         Exchange, Side,
+//     };
+//     use chrono::Utc;
+//     use std::ops::Add;
+//
+//     /// Build a [`MarketEvent`] of [`DataKind::PublicTrade`](DataKind) with the provided [`Side`].
+//     pub fn market_event_trade(side: Side) -> MarketEvent<Instrument, DataKind> {
+//         MarketEvent {
+//             exchange_time: Utc::now(),
+//             received_time: Utc::now(),
+//             exchange: Exchange::from(ExchangeId::BinanceSpot),
+//             instrument: Instrument::from(("btc", "usdt", InstrumentKind::Spot)),
+//             kind: DataKind::Trade(PublicTrade {
+//                 id: "trade_id".to_string(),
+//                 price: 1000.0,
+//                 amount: 1.0,
+//                 side,
+//             }),
+//         }
+//     }
+//
+//     /// Build a [`MarketEvent`] of [`DataKind::Candle`](DataKind).
+//     pub fn market_event_candle() -> MarketEvent<Instrument, DataKind> {
+//         let now = Utc::now();
+//         MarketEvent {
+//             exchange_time: now,
+//             received_time: now.add(chrono::Duration::milliseconds(200)),
+//             exchange: Exchange::from(ExchangeId::BinanceSpot),
+//             instrument: Instrument::from(("btc", "usdt", InstrumentKind::Spot)),
+//             kind: DataKind::Candle(Candle {
+//                 close_time: now,
+//                 open: 960.0,
+//                 high: 1100.0,
+//                 low: 950.0,
+//                 close: 1000.0,
+//                 volume: 100000.0,
+//                 trade_count: 1000,
+//             }),
+//         }
+//     }
+//
+//     /// Build a [`Signal`].
+//     pub fn signal() -> Signal {
+//         Signal {
+//             time: Utc::now(),
+//             exchange: Exchange::from("binance"),
+//             instrument: Instrument::from(("btc", "usdt", InstrumentKind::Spot)),
+//             signals: Default::default(),
+//             market_meta: Default::default(),
+//         }
+//     }
+//
+//     /// Build an [`OrderEvent`] to buy 1.0 contract.
+//     pub fn order_event() -> OrderEvent {
+//         OrderEvent {
+//             time: Utc::now(),
+//             exchange: Exchange::from("binance"),
+//             instrument: Instrument::from(("eth", "usdt", InstrumentKind::Spot)),
+//             market_meta: MarketMeta::default(),
+//             decision: Decision::default(),
+//             quantity: 1.0,
+//             order_type: OrderType::default(),
+//         }
+//     }
+//
+//     /// Build a [`FillEvent`] for a single bought contract.
+//     pub fn fill_event() -> FillEvent {
+//         FillEvent {
+//             time: Utc::now(),
+//             exchange: Exchange::from("binance"),
+//             instrument: Instrument::from(("eth", "usdt", InstrumentKind::Spot)),
+//             market_meta: Default::default(),
+//             decision: Decision::default(),
+//             quantity: 1.0,
+//             fill_value_gross: 100.0,
+//             fees: Fees::default(),
+//         }
+//     }
+//
+//     /// Build a [`Position`].
+//     pub fn position() -> Position {
+//         Position {
+//             position_id: "engine_id_trader_{}_{}_position".to_owned(),
+//             exchange: Exchange::from("binance"),
+//             instrument: Instrument::from(("eth", "usdt", InstrumentKind::Spot)),
+//             meta: Default::default(),
+//             side: Side::Buy,
+//             quantity: 1.0,
+//             enter_fees: Default::default(),
+//             enter_fees_total: 0.0,
+//             enter_avg_price_gross: 100.0,
+//             enter_value_gross: 100.0,
+//             exit_fees: Default::default(),
+//             exit_fees_total: 0.0,
+//             exit_avg_price_gross: 0.0,
+//             exit_value_gross: 0.0,
+//             current_symbol_price: 100.0,
+//             current_value_gross: 100.0,
+//             unrealised_profit_loss: 0.0,
+//             realised_profit_loss: 0.0,
+//         }
+//     }
+// }
