@@ -2,7 +2,7 @@ use crate::v2::{
     engine::state::instrument::{market_data::MarketState, order::Orders},
     execution::error::ExecutionError,
     instrument::Instrument,
-    order::{Cancelled, InFlight, Open, Order, OrderState},
+    order::{Cancelled, Open, OpenInFlight, Order, OrderState},
     position::{PortfolioId, Position},
     trade::Trade,
     Snapshot,
@@ -28,7 +28,7 @@ pub trait MarketDataManager<InstrumentKey> {
 pub trait OrderManager<InstrumentKey> {
     fn record_in_flights(
         &mut self,
-        requests: impl IntoIterator<Item = Order<InstrumentKey, InFlight>>,
+        requests: impl IntoIterator<Item = Order<InstrumentKey, OpenInFlight>>,
     );
     fn update_from_open(&mut self, response: &Order<InstrumentKey, Result<Open, ExecutionError>>);
     fn update_from_cancel(
@@ -88,7 +88,7 @@ impl MarketDataManager<InstrumentId> for Instruments {
 impl OrderManager<InstrumentId> for Instruments {
     fn record_in_flights(
         &mut self,
-        requests: impl IntoIterator<Item = Order<InstrumentId, InFlight>>,
+        requests: impl IntoIterator<Item = Order<InstrumentId, OpenInFlight>>,
     ) {
         for request in requests {
             let state = self.state_mut(&request.instrument).unwrap_or_else(|| {

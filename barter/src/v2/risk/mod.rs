@@ -1,5 +1,5 @@
 use crate::v2::{
-    order::{InFlight, Order, RequestCancel, RequestOpen},
+    order::{OpenInFlight, Order, RequestCancel, RequestOpen},
     TryUpdater,
 };
 use barter_data::instrument::InstrumentId;
@@ -65,7 +65,7 @@ impl<T, Reason> RiskRefused<T, Reason> {
 }
 
 impl<InstrumentKey: Clone> From<&RiskApproved<Order<InstrumentKey, RequestOpen>>>
-    for Order<InstrumentKey, InFlight>
+    for Order<InstrumentKey, OpenInFlight>
 {
     fn from(value: &RiskApproved<Order<InstrumentKey, RequestOpen>>) -> Self {
         let Order {
@@ -79,7 +79,7 @@ impl<InstrumentKey: Clone> From<&RiskApproved<Order<InstrumentKey, RequestOpen>>
             instrument: instrument.clone(),
             cid: *cid,
             side: *side,
-            state: InFlight,
+            state: OpenInFlight,
         }
     }
 }

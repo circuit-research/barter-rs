@@ -1,20 +1,29 @@
 use crate::v2::{
     engine::state::instrument::OrderManager,
     execution::error::ExecutionError,
-    order::{Cancelled, ClientOrderId, InFlight, Open, Order, OrderState},
+    order::{CancelInFlight, Cancelled, ClientOrderId, Open, OpenInFlight, Order, OrderState},
     Snapshot,
 };
-use derive_more::Constructor;
+use derive_more::{Constructor, From};
 use serde::{Deserialize, Serialize};
-use std::fmt::{Debug, Display};
+use std::{
+    collections::HashMap,
+    fmt::{Debug, Display},
+};
 use tracing::{debug, error, warn};
 use uuid::Uuid;
-use vecmap::VecMap;
+use vecmap::{map::Entry, VecMap};
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Constructor)]
 pub struct Orders<InstrumentKey> {
-    pub in_flights: VecMap<ClientOrderId, Order<InstrumentKey, InFlight>>,
-    pub opens: VecMap<ClientOrderId, Order<InstrumentKey, Open>>,
+    pub inner: VecMap<ClientOrderId, Order<InstrumentKey, InternalOrderState>>,
+}
+
+#[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize, From)]
+enum InternalOrderState {
+    OpenInFlight(OpenInFlight),
+    Open(Open),
+    CancelInFlight(CancelInFlight),
 }
 
 impl<InstrumentKey> OrderManager<InstrumentKey> for Orders<InstrumentKey>
@@ -23,110 +32,107 @@ where
 {
     fn record_in_flights(
         &mut self,
-        requests: impl IntoIterator<Item = Order<InstrumentKey, InFlight>>,
+        requests: impl IntoIterator<Item = Order<InstrumentKey, OpenInFlight>>,
     ) {
         for request in requests {
-            if let Some(duplicate_cid_order) = self.in_flights.insert(request.cid, request) {
+            if let Some(duplicate_cid_order) = self.inner.insert(request.cid, Order::from(request))
+            {
                 error!(
                     cid = %duplicate_cid_order.cid,
                     event = ?duplicate_cid_order,
-                    "OrderManager upserted Order<InFlight> with duplicate ClientOrderId"
+                    "OrderManager upserted Order<OpenInFlight> with duplicate ClientOrderId"
                 );
             }
         }
     }
 
     fn update_from_open(&mut self, response: &Order<InstrumentKey, Result<Open, ExecutionError>>) {
-        match (self.in_flights.remove(&response.cid), &response.state) {
-            (Some(in_flight), Ok(open)) => {
-                debug!(
-                    instrument = %response.instrument,
-                    cid = %response.cid,
-                    ?in_flight,
-                    open = ?response,
-                    "OrderManager removed Order<InFlight> after receiving Order<Open>"
-                );
+        match (self.inner.entry(response.cid), &response.state) {
+            (Entry::Occupied(mut order), Ok(new_open)) => match &order.get().state {
+                InternalOrderState::OpenInFlight(_) => {
+                    debug!(
+                        instrument = %response.instrument,
+                        cid = %response.cid,
+                        order = ?order.get(),
+                        update = ?response,
+                        "OrderManager transitioned Order<OpenInFlight> to Order<Open>"
+                    );
+                    order.get_mut().state = InternalOrderState::Open(new_open.clone());
+                }
+                InternalOrderState::Open(existing_open) => {
+                    warn!(
+                        instrument = %response.instrument,
+                        cid = %response.cid,
+                        order = ?order.get(),
+                        update = ?response,
+                        "OrderManager received Order<Open> Ok response for existing Order<Open> - taking latest timestamp"
+                    );
 
-                self.opens
-                    .entry(response.cid)
-                    .and_modify(|pre_existing| {
-                        // Assume pre-existing Order<Open> came from a prior OrderSnapshot
-                        // notification, so don't modify with Open response data (could be stale)
-                        warn!(
-                            instrument = %response.instrument,
-                            cid = %response.cid,
-                            ?pre_existing,
-                            open = ?response,
-                            "OrderManager received Order<Open> Ok response for pre-existing Order<Open>"
-                        );
-                    })
-                    .or_insert_with(|| {
-                        debug!(
-                            instrument = %response.instrument,
-                            cid = %response.cid,
-                            ?in_flight,
-                            open = ?response,
-                            "OrderManager added Order<Open> after receiving Order<Open> Ok response"
-                        );
-                        Order::new(
-                            response.instrument.clone(),
-                            response.cid,
-                            response.side,
-                            open.clone(),
-                        )
-                    });
-            }
-            (Some(in_flight), Err(error)) => {
+                    if new_open.time_update > existing_open.time_update {
+                        order.get_mut().state = InternalOrderState::Open(new_open.clone());
+                    }
+                }
+                InternalOrderState::CancelInFlight(_) => {
+                    error!(
+                        instrument = %response.instrument,
+                        cid = %response.cid,
+                        order = ?order.get(),
+                        update = ?response,
+                        "OrderManager received Order<Open> Ok response for existing Order<CancelInFlight>"
+                    );
+                }
+            },
+            (Entry::Occupied(mut order), Err(_)) => match &order.get().state {
+                InternalOrderState::OpenInFlight(_) => {
+                    warn!(
+                        instrument = %response.instrument,
+                        cid = %response.cid,
+                        order = ?order.get(),
+                        update = ?response,
+                        "OrderManager received ExecutionError for Order<OpenInFlight>"
+                    );
+                    order.remove();
+                }
+                InternalOrderState::Open(_) => {
+                    error!(
+                        instrument = %response.instrument,
+                        cid = %response.cid,
+                        order = ?order.get(),
+                        update = ?response,
+                        "OrderManager received ExecutionError for existing Order<Open>"
+                    );
+                }
+                InternalOrderState::CancelInFlight(_) => {
+                    error!(
+                        instrument = %response.instrument,
+                        cid = %response.cid,
+                        ?order,
+                        update = ?response,
+                        "OrderManager received ExecutionError for existing Order<CancelInFlight>"
+                    );
+                }
+            },
+            (Entry::Vacant(cid_untracked), Ok(new_open)) => {
                 warn!(
                     instrument = %response.instrument,
                     cid = %response.cid,
-                    ?in_flight,
-                    ?error,
-                    "OrderManager received ExecutionError for Order<InFlight>"
-                );
-            }
-            (None, Ok(open)) => {
-                warn!(
-                    instrument = %response.instrument,
-                    cid = %response.cid,
-                    open = ?response,
-                    "OrderManager received Order<Open> Ok response for non-InFlight order - why was this not InFlight?"
+                    update = ?response,
+                    "OrderManager received Order<Open> for untracked ClientOrderId - now tracking"
                 );
 
-                self.opens
-                    .entry(response.cid)
-                    .and_modify(|pre_existing| {
-                        // Assume pre-existing Order<Open> came from a prior OrderSnapshot
-                        // notification, so don't modify with response data
-                        warn!(
-                            instrument = %response.instrument,
-                            cid = %response.cid,
-                            ?pre_existing,
-                            open = ?response,
-                            "OrderManager received Order<Open> Ok response for pre-existing Order<Open>"
-                        );
-                    })
-                    .or_insert_with(|| {
-                        debug!(
-                            instrument = %response.instrument,
-                            cid = %response.cid,
-                            open = ?response,
-                            "OrderManager added Order<Open> after receiving Order<Open> Ok response"
-                        );
-                        Order::new(
-                            response.instrument.clone(),
-                            response.cid,
-                            response.side,
-                            open.clone(),
-                        )
-                    });
+                cid_untracked.insert(Order::new(
+                    response.instrument.clone(),
+                    response.cid,
+                    response.side,
+                    InternalOrderState::from(new_open.clone()),
+                ));
             }
-            (None, Err(error)) => {
+            (Entry::Vacant(_), Err(_)) => {
                 error!(
                     instrument = %response.instrument,
                     cid = %response.cid,
-                    ?error,
-                    "OrderManager received ExecutionError for non-existing Order<InFlight>"
+                    update = ?response,
+                    "OrderManager received ExecutionError for untracked ClientOrderId"
                 );
             }
         }
@@ -151,72 +157,123 @@ where
         &mut self,
         snapshot: &Snapshot<Order<InstrumentKey, OrderState>>,
     ) {
-        let Snapshot(order) = snapshot;
+        let Snapshot(snapshot) = snapshot;
+        let existing = self.inner.entry(snapshot.cid);
 
-        match &order.state {
-            // Remove InFlight order (if present), and upsert the Open Order
-            OrderState::Open(open) => {
-                if let Some(in_flight) = self.in_flights.remove(&order.cid) {
-                    debug!(
-                        instrument = %order.instrument,
-                        cid = %order.cid,
-                        ?in_flight,
-                        open = ?order,
-                        "OrderManager removed Order<InFlight> after receiving Snapshot<Order<Open>>"
-                    );
-                }
+        // Todo: add logging where appropriate below
+        // '--> is this robust enough? It's more simple than the previous impl way below
 
-                if let Some(replaced) = self.opens.insert(
-                    order.cid,
-                    Order::new(
-                        order.instrument.clone(),
-                        order.cid,
-                        order.side,
-                        open.clone(),
-                    ),
-                ) {
-                    assert_eq!(
-                        replaced.instrument, order.instrument,
-                        "Snapshot<Order> does not have same instrument as existing Order<Open>"
-                    );
+        match &snapshot.state {
+            OrderState::Open(new_open) => {
+                self.inner
+                    .entry(snapshot.cid)
+                    .and_modify(|order| *order.state = InternalOrderState::Open(new_open.clone()))
+                    .or_insert(Order::new(
+                        snapshot.instrument.clone(),
+                        snapshot.cid,
+                        snapshot.side,
+                        InternalOrderState::Open(new_open.clone()),
+                    ));
+            }
+            OrderState::OpenRejected(reason) => {
+                if let Some(removed) = self.inner.remove(&snapshot.cid) {
+                    // Todo: Log
                 }
             }
-            // Remove associated Open (expected), or InFlight (unexpected) order
-            OrderState::Cancelled(_cancelled) => {
-                if let Some(open) = self.opens.remove(&order.cid) {
-                    debug!(
-                        instrument = %order.instrument,
-                        cid = %order.cid,
-                        ?open,
-                        cancel = ?order,
-                        "OrderManager removed Order<Open> after receiving Snapshot<Order<Cancelled>>"
-                    );
-                } else if let Some(in_flight) = self.in_flights.remove(&order.cid) {
-                    warn!(
-                        instrument = %order.instrument,
-                        cid = %order.cid,
-                        ?in_flight,
-                        cancel = ?order,
-                        "OrderManager removed Order<InFlight> after receiving Snapshot<Order<Cancelled>> - why was this still InFlight?"
-                    );
-                } else {
-                    warn!(
-                        instrument = %order.instrument,
-                        cid = %order.cid,
-                        cancel = ?order,
-                        "OrderManager ignoring Snapshot<Order<Cancelled> for un-tracked Order"
-                    );
+            OrderState::CancelRejected(reason) => {
+                if let Some(removed) = self.inner.remove(&snapshot.cid) {
+                    // Todo: Log
+                }
+            }
+            OrderState::Cancelled(new_cancelled) => {
+                if let Some(removed) = self.inner.remove(&snapshot.cid) {
+                    // Todo: Log
                 }
             }
         }
+
+        // match &order.state {
+        //     // Remove InFlight order (if present), and upsert the Open Order
+        //     OrderState::Open(open) => {
+        //         if let Some(in_flight) = self.in_flights.remove(&order.cid) {
+        //             debug!(
+        //                 instrument = %order.instrument,
+        //                 cid = %order.cid,
+        //                 ?in_flight,
+        //                 open = ?order,
+        //                 "OrderManager removed Order<InFlight> after receiving Snapshot<Order<Open>>"
+        //             );
+        //         }
+        //
+        //         if let Some(replaced) = self.opens.insert(
+        //             order.cid,
+        //             Order::new(
+        //                 order.instrument.clone(),
+        //                 order.cid,
+        //                 order.side,
+        //                 open.clone(),
+        //             ),
+        //         ) {
+        //             assert_eq!(
+        //                 replaced.instrument, order.instrument,
+        //                 "Snapshot<Order> does not have same instrument as existing Order<Open>"
+        //             );
+        //         }
+        //     }
+        //     // Remove associated Open (expected), or InFlight (unexpected) order
+        //     OrderState::Cancelled(_cancelled) => {
+        //         if let Some(open) = self.opens.remove(&order.cid) {
+        //             debug!(
+        //                 instrument = %order.instrument,
+        //                 cid = %order.cid,
+        //                 ?open,
+        //                 cancel = ?order,
+        //                 "OrderManager removed Order<Open> after receiving Snapshot<Order<Cancelled>>"
+        //             );
+        //         } else if let Some(in_flight) = self.in_flights.remove(&order.cid) {
+        //             warn!(
+        //                 instrument = %order.instrument,
+        //                 cid = %order.cid,
+        //                 ?in_flight,
+        //                 cancel = ?order,
+        //                 "OrderManager removed Order<InFlight> after receiving Snapshot<Order<Cancelled>> - why was this still InFlight?"
+        //             );
+        //         } else {
+        //             warn!(
+        //                 instrument = %order.instrument,
+        //                 cid = %order.cid,
+        //                 cancel = ?order,
+        //                 "OrderManager ignoring Snapshot<Order<Cancelled> for un-tracked Order"
+        //             );
+        //         }
+        //     }
+        // }
     }
 }
 
 impl<InstrumentKey> Default for Orders<InstrumentKey> {
     fn default() -> Self {
         Self {
-            in_flights: Default::default(),
-            opens: Default::default(),
+            inner: Default::default(),
+        }
+    }
+}
+
+impl<InstrumentKey> From<Order<InstrumentKey, OpenInFlight>>
+    for Order<InstrumentKey, InternalOrderState>
+{
+    fn from(value: Order<InstrumentKey, OpenInFlight>) -> Self {
+        let Order {
+            instrument,
+            cid,
+            side,
+            state,
+        } = value;
+        Self {
+            instrument,
+            cid,
+            side,
+            state: InternalOrderState::OpenInFlight(state),
         }
     }
 }
@@ -226,51 +283,73 @@ mod tests {
     use super::*;
     use crate::v2::order::OrderId;
     use barter_integration::model::Side;
+    use chrono::DateTime;
+    use std::ops::Add;
 
-    fn in_flights(
-        orders: impl IntoIterator<Item = Order<u64, InFlight>>,
-    ) -> VecMap<ClientOrderId, Order<u64, InFlight>> {
-        orders.into_iter().map(|order| (order.cid, order)).collect()
+    fn specific_open_in_flights(
+        orders: impl IntoIterator<Item = Order<u64, OpenInFlight>>,
+    ) -> VecMap<ClientOrderId, Order<u64, InternalOrderState>> {
+        orders
+            .into_iter()
+            .map(|order| (order.cid, Order::from(order)))
+            .collect()
     }
 
-    fn in_flight(cid: ClientOrderId) -> Order<u64, InFlight> {
+    fn specific_open_in_flight(cid: ClientOrderId) -> Order<u64, OpenInFlight> {
         Order {
             instrument: 1,
             cid,
             side: Side::Buy,
-            state: InFlight,
+            state: OpenInFlight,
         }
     }
 
-    fn opens(
-        orders: impl IntoIterator<Item = Order<u64, Open>>,
-    ) -> VecMap<ClientOrderId, Order<u64, Open>> {
-        orders.into_iter().map(|order| (order.cid, order)).collect()
+    fn orders(orders: impl IntoIterator<Item = Order<u64, InternalOrderState>>) -> Orders<u64> {
+        Orders {
+            inner: orders.into_iter().collect(),
+        }
     }
 
-    fn open(cid: ClientOrderId, id: OrderId) -> Order<u64, Open> {
+    fn open_in_flight(cid: ClientOrderId) -> Order<u64, InternalOrderState> {
         Order {
             instrument: 1,
             cid,
             side: Side::Buy,
-            state: Open {
+            state: InternalOrderState::OpenInFlight(OpenInFlight),
+        }
+    }
+
+    fn open(
+        cid: ClientOrderId,
+        id: OrderId,
+        secs_since_epoch: i64,
+    ) -> Order<u64, InternalOrderState> {
+        Order {
+            instrument: 1,
+            cid,
+            side: Side::Buy,
+            state: InternalOrderState::Open(Open {
                 id,
-                time_update: Default::default(),
+                time_update: DateTime::MIN_UTC.add(chrono::TimeDelta::seconds(secs_since_epoch)),
                 price: 0.0,
                 quantity: 0.0,
                 filled_quantity: 0.0,
-            },
+            }),
         }
     }
 
-    fn open_ok(cid: ClientOrderId, id: OrderId) -> Order<u64, Result<Open, ExecutionError>> {
+    fn open_ok(
+        cid: ClientOrderId,
+        id: OrderId,
+        secs_since_epoch: i64,
+    ) -> Order<u64, Result<Open, ExecutionError>> {
         Order {
             instrument: 1,
             cid,
             side: Side::Buy,
             state: Ok(Open {
                 id,
-                time_update: Default::default(),
+                time_update: DateTime::MIN_UTC.add(chrono::TimeDelta::seconds(secs_since_epoch)),
                 price: 0.0,
                 quantity: 0.0,
                 filled_quantity: 0.0,
@@ -287,39 +366,59 @@ mod tests {
         }
     }
 
+    fn cancel_in_flight(cid: ClientOrderId, id: OrderId) -> Order<u64, InternalOrderState> {
+        Order {
+            instrument: 1,
+            cid,
+            side: Side::Buy,
+            state: InternalOrderState::CancelInFlight(CancelInFlight { id }),
+        }
+    }
+
     #[test]
     fn test_record_in_flights() {
         struct TestCase {
             state: Orders<u64>,
-            input: Vec<Order<u64, InFlight>>,
+            input: Vec<Order<u64, OpenInFlight>>,
             expected: Orders<u64>,
         }
 
         let cid_1 = ClientOrderId(Uuid::new_v4());
+        let cid_2 = ClientOrderId(Uuid::new_v4());
 
         let cases = vec![
             TestCase {
                 // TC0: Insert unseen InFlight
-                state: Orders {
-                    in_flights: Default::default(),
-                    opens: Default::default(),
-                },
-                input: vec![in_flight(cid_1)],
+                state: Orders::default(),
+                input: vec![specific_open_in_flight(cid_1)],
                 expected: Orders {
-                    in_flights: in_flights([in_flight(cid_1)]),
-                    opens: Default::default(),
+                    inner: specific_open_in_flights([specific_open_in_flight(cid_1)]),
                 },
             },
             TestCase {
                 // TC1: Insert InFlight that is already tracked
                 state: Orders {
-                    in_flights: in_flights([in_flight(cid_1)]),
-                    opens: Default::default(),
+                    inner: specific_open_in_flights([specific_open_in_flight(cid_1)]),
                 },
-                input: vec![],
+                input: vec![specific_open_in_flight(cid_1)],
                 expected: Orders {
-                    in_flights: in_flights([in_flight(cid_1)]),
-                    opens: Default::default(),
+                    inner: specific_open_in_flights([specific_open_in_flight(cid_1)]),
+                },
+            },
+            TestCase {
+                // TC2: Insert one untracked InFlight, and one already tracked
+                state: Orders {
+                    inner: specific_open_in_flights([specific_open_in_flight(cid_1)]),
+                },
+                input: vec![
+                    specific_open_in_flight(cid_1),
+                    specific_open_in_flight(cid_2),
+                ],
+                expected: Orders {
+                    inner: specific_open_in_flights([
+                        specific_open_in_flight(cid_1),
+                        specific_open_in_flight(cid_2),
+                    ]),
                 },
             },
         ];
@@ -343,100 +442,58 @@ mod tests {
 
         let cases = vec![
             TestCase {
-                // TC0: InFlight present, response Ok(open), Open present
-                state: Orders {
-                    in_flights: in_flights([in_flight(cid_1)]),
-                    opens: opens([open(cid_1, order_id_1.clone())]),
-                },
-                input: open_ok(cid_1, order_id_1.clone()),
-                expected: Orders {
-                    in_flights: Default::default(),
-                    opens: opens([open(cid_1, order_id_1.clone())]),
-                },
+                // TC0: cid existing OpenInFlight, response Ok(Open)
+                state: orders([open_in_flight(cid_1)]),
+                input: open_ok(cid_1, order_id_1.clone(), 0),
+                expected: orders([open(cid_1, order_id_1.clone(), 0)]),
             },
             TestCase {
-                // TC1: InFlight present, response Ok(open), Open not-present
-                state: Orders {
-                    in_flights: in_flights([in_flight(cid_1)]),
-                    opens: Default::default(),
-                },
-                input: open_ok(cid_1, order_id_1.clone()),
-                expected: Orders {
-                    in_flights: Default::default(),
-                    opens: opens([open(cid_1, order_id_1.clone())]),
-                },
+                // TC1: cid existing Open, response Ok(Open) w/ older timestamp
+                state: orders([open(cid_1, order_id_1.clone(), 1)]),
+                input: open_ok(cid_1, order_id_1.clone(), 0),
+                expected: orders([open(cid_1, order_id_1.clone(), 1)]),
             },
             TestCase {
-                // TC2: InFlight present, response Err(open), Open not-present
-                state: Orders {
-                    in_flights: in_flights([in_flight(cid_1)]),
-                    opens: Default::default(),
-                },
+                // TC2: cid existing Open, response Ok(Open) w/ newer timestamp
+                state: orders([open(cid_1, order_id_1.clone(), 0)]),
+                input: open_ok(cid_1, order_id_1.clone(), 1),
+                expected: orders([open(cid_1, order_id_1.clone(), 1)]),
+            },
+            TestCase {
+                // TC3: cid existing CancelInFlight, response Ok(Open)
+                state: orders([cancel_in_flight(cid_1, order_id_1.clone())]),
+                input: open_ok(cid_1, order_id_1.clone(), 1),
+                expected: orders([cancel_in_flight(cid_1, order_id_1.clone())]),
+            },
+            TestCase {
+                // TC4: cid untracked, response Ok(Open)
+                state: orders([]),
+                input: open_ok(cid_1, order_id_1.clone(), 0),
+                expected: orders([open(cid_1, order_id_1.clone(), 0)]),
+            },
+            TestCase {
+                // TC5: cid existing OpenInFlight, response Err
+                state: orders([open_in_flight(cid_1)]),
                 input: open_err(cid_1),
-                expected: Orders {
-                    in_flights: Default::default(),
-                    opens: Default::default(),
-                },
+                expected: orders([]),
             },
             TestCase {
-                // TC3: InFlight present, response Err(open), Open present
-                state: Orders {
-                    in_flights: in_flights([in_flight(cid_1)]),
-                    opens: opens([open(cid_1, order_id_1.clone())]),
-                },
+                // TC6: cid existing Open, response Err
+                state: orders([open(cid_1, order_id_1.clone(), 0)]),
                 input: open_err(cid_1),
-                expected: Orders {
-                    in_flights: Default::default(),
-                    opens: opens([open(cid_1, order_id_1.clone())]),
-                },
+                expected: orders([open(cid_1, order_id_1.clone(), 0)]),
             },
             TestCase {
-                // TC4: InFlight not-present, response Ok(open), Open present
-                state: Orders {
-                    in_flights: Default::default(),
-                    opens: opens([open(cid_1, order_id_1.clone())]),
-                },
-                input: open_ok(cid_1, order_id_1.clone()),
-                expected: Orders {
-                    in_flights: Default::default(),
-                    opens: opens([open(cid_1, order_id_1.clone())]),
-                },
-            },
-            TestCase {
-                // TC5: InFlight not-present, response Ok(open), Open not-present
-                state: Orders {
-                    in_flights: Default::default(),
-                    opens: Default::default(),
-                },
-                input: open_ok(cid_1, order_id_1.clone()),
-                expected: Orders {
-                    in_flights: Default::default(),
-                    opens: opens([open(cid_1, order_id_1.clone())]),
-                },
-            },
-            TestCase {
-                // TC6: InFlight not-present, response Err(open), Open present
-                state: Orders {
-                    in_flights: Default::default(),
-                    opens: opens([open(cid_1, order_id_1.clone())]),
-                },
+                // TC7: cid existing CancelInFlight, response Err
+                state: orders([cancel_in_flight(cid_1, order_id_1.clone())]),
                 input: open_err(cid_1),
-                expected: Orders {
-                    in_flights: Default::default(),
-                    opens: opens([open(cid_1, order_id_1.clone())]),
-                },
+                expected: orders([cancel_in_flight(cid_1, order_id_1.clone())]),
             },
             TestCase {
-                // TC7: InFlight not-present, response Err(open), Open not-present
-                state: Orders {
-                    in_flights: Default::default(),
-                    opens: Default::default(),
-                },
+                // TC8: cid untracked, response Err
+                state: orders([]),
                 input: open_err(cid_1),
-                expected: Orders {
-                    in_flights: Default::default(),
-                    opens: Default::default(),
-                },
+                expected: orders([]),
             },
         ];
 

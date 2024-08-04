@@ -51,6 +51,8 @@ pub struct Order<InstrumentKey, State> {
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize, From)]
 pub enum OrderState {
     Open(Open),
+    OpenRejected(OpenRejectedReason),
+    CancelRejected(CancelRejectedReason),
     Cancelled(Cancelled),
 }
 
@@ -87,7 +89,7 @@ pub struct RequestCancel {
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
-pub struct InFlight;
+pub struct OpenInFlight;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Deserialize, Serialize, Constructor)]
 pub struct Open {
@@ -104,6 +106,14 @@ impl Open {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize, From)]
+pub struct OpenRejectedReason(pub String);
+
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
+pub struct CancelInFlight {
+    pub id: OrderId,
+}
+
 #[derive(
     Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize, Constructor,
 )]
@@ -111,3 +121,6 @@ pub struct Cancelled {
     pub id: OrderId,
     pub time_exchange: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize, From)]
+pub struct CancelRejectedReason(pub String);

@@ -7,7 +7,7 @@ use crate::v2::{
     },
     execution::ExecutionRequest,
     instrument::asset::AssetId,
-    order::{InFlight, Order, RequestCancel, RequestOpen},
+    order::{OpenInFlight, Order, RequestCancel, RequestOpen},
     risk::{RiskApproved, RiskManager},
     strategy::Strategy,
 };
@@ -76,7 +76,7 @@ where
 
             // Generate InFlights for RiskApproved orders
             let (in_flights, opens): (Vec<_>, Vec<_>) = opens
-                .map(|request| (Order::<_, InFlight>::from(&request), request))
+                .map(|request| (Order::<_, OpenInFlight>::from(&request), request))
                 .unzip();
 
             // Collect remaining order Iterators
