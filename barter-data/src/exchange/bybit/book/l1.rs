@@ -6,7 +6,7 @@ use crate::{
 };
 use barter_integration::model::{Exchange, SubscriptionId};
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct BybitOrderBookL1 {
@@ -22,8 +22,10 @@ pub struct BybitOrderBookL1 {
 #[derive(Debug, Deserialize)]
 pub struct BybitOrderBookL1Data {
     pub s: String,
-    pub b: Vec<[String; 2]>,
-    pub a: Vec<[String; 2]>,
+    #[serde(deserialize_with = "de_ob_l1_level")]
+    pub b: [f64; 2],
+    #[serde(deserialize_with = "de_ob_l1_level")]
+    pub a: [f64; 2],
     pub u: u64,
     pub seq: u64,
 }
@@ -45,33 +47,24 @@ impl<InstrumentId> From<(ExchangeId, InstrumentId, BybitOrderBookL1)>
             instrument,
             kind: OrderBookL1 {
                 last_update_time: book.ts,
-                best_bid: Level::new(
-                    book.data
-                        .b
-                        .get(0)
-                        .and_then(|b| b[0].parse().ok())
-                        .unwrap_or(0.0),
-                    book.data
-                        .b
-                        .get(0)
-                        .and_then(|b| b[1].parse().ok())
-                        .unwrap_or(0.0),
-                ),
-                best_ask: Level::new(
-                    book.data
-                        .a
-                        .get(0)
-                        .and_then(|a| a[0].parse().ok())
-                        .unwrap_or(0.0),
-                    book.data
-                        .a
-                        .get(0)
-                        .and_then(|a| a[1].parse().ok())
-                        .unwrap_or(0.0),
-                ),
+                best_bid: Level::new(book.data.b[0], book.data.b[1]),
+                best_ask: Level::new(book.data.a[0], book.data.a[1]),
             },
         })])
     }
+}
+
+/// https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook#response-example
+pub fn de_ob_l1_level<'de, D>(deserializer: D) -> Result<[f64; 2], D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    let mut value = [0.0, 0.0];
+    if let Ok(level) = <[[&str; 2]; 1] as Deserialize>::deserialize(deserializer) {
+        value[0] = level[0][0].parse().map_err(serde::de::Error::custom)?;
+        value[1] = level[0][1].parse().map_err(serde::de::Error::custom)?;
+    }
+    Ok(value)
 }
 
 #[cfg(test)]
