@@ -61,8 +61,11 @@ where
 {
     let mut value = [0.0, 0.0];
     if let Ok(level) = <[[&str; 2]; 1] as Deserialize>::deserialize(deserializer) {
+        dbg!("level", level);
         value[0] = level[0][0].parse().map_err(serde::de::Error::custom)?;
         value[1] = level[0][1].parse().map_err(serde::de::Error::custom)?;
+    } else {
+        dbg!("empty level");
     }
     Ok(value)
 }
