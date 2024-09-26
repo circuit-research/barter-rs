@@ -1,9 +1,10 @@
 use barter_data::{
-    exchange::{bybit::spot::BybitSpot, ExchangeId},
+    exchange::{bybit::futures::BybitPerpetualsUsd, bybit::spot::BybitSpot},
     streams::Streams,
     subscription::book::OrderBooksL2,
 };
 use barter_integration::model::instrument::kind::InstrumentKind;
+use futures::StreamExt;
 use tracing::info;
 
 #[rustfmt::skip]
@@ -13,9 +14,12 @@ async fn main() {
     init_logging();
 
     // '--> each call to StreamBuilder::subscribe() creates a separate WebSocket connection
-    let mut streams = Streams::<OrderBooksL2>::builder()
+    let streams = Streams::<OrderBooksL2>::builder()
         .subscribe([
             (BybitSpot::default(), "btc", "usdt", InstrumentKind::Spot, OrderBooksL2),
+        ])
+        .subscribe([
+            (BybitPerpetualsUsd::default(), "mother", "usdt", InstrumentKind::Perpetual, OrderBooksL2),
         ])
         .init()
         .await
@@ -25,12 +29,10 @@ async fn main() {
     // Notes:
     //  - Use `streams.select(ExchangeId)` to interact with the individual exchange streams!
     //  - Use `streams.join()` to join all exchange streams into a single mpsc::UnboundedReceiver!
-    let mut binance_stream = streams
-        .select(ExchangeId::BybitSpot)
-        .unwrap();
+    let mut joined_stream = streams.join_map().await;
 
-    while let Some(order_book_l2) = binance_stream.recv().await {
-        info!("MarketEvent<OrderBook>: {order_book_l2:?}");
+    while let Some((exchange, order_book_l2)) = joined_stream.next().await {
+        info!("Exchange: {exchange}, MarketEvent<OrderBookL2>: {order_book_l2:?}");
     }
 }
 

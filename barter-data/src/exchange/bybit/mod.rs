@@ -107,7 +107,7 @@ where
     }
 
     fn expected_responses<InstrumentId>(_: &Map<InstrumentId>) -> usize {
-        1
+        0
     }
 }
 
